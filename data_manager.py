@@ -8,8 +8,11 @@ def save_report(report: Dict, decision: Dict):
     records = []
 
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            records = json.load(f)
+        try:
+            with open(DATA_FILE, "r") as f:
+                records = json.load(f)
+        except:
+            records = []
 
     full_record = {
         "viewed_email": report["viewed"],
@@ -22,3 +25,6 @@ def save_report(report: Dict, decision: Dict):
 
     with open(DATA_FILE, "w") as f:
         json.dump(records, f, indent=2)
+
+    print(f"\n Saved! Total reports: {len(records)}")
+    print(f"   File: {DATA_FILE}")
