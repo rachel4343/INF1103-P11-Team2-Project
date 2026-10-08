@@ -331,6 +331,7 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
     if not has_usable_ai_result(ai_result):
         priority = PRIORITY_MANUAL
         triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI result was unavailable or incomplete"]
+        ai = {}
     else:
         ai = ai_result
         matched = evaluate_rules(ai)
@@ -357,12 +358,14 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
     # Keyword safety net (can only raise, capped at Security Review)
     priority, triggered = apply_keyword_safety_net(priority, keyword_scan, triggered)
 
+    # What the employee did (can raise further)
+    priority, triggered = escalate_for_user_actions(report, ai, priority, triggered)
+
     return {
         "priority": priority,
         "rules_triggered": triggered,
         "keyword_scan": keyword_scan,
     }
-
 
 
 def has_conflicting_indicators(ai: Dict) -> bool:
@@ -410,4 +413,47 @@ def apply_keyword_safety_net(priority: str, scan: Dict, triggered: List[str]) ->
         words = sum(len(group) for group in scan["found"].values())
         return PRIORITY_SECURITY, triggered + [
             f"Upgraded to {PRIORITY_SECURITY} because the wording contains {words} red-flag words"]
+    return priority, triggered
+
+
+
+
+def read_actions(report: Optional[Dict]) -> Dict:
+    """The employee's three actions as booleans, whichever shape the report uses.
+
+    Preferred shape: report["actions_taken"] = {"clicked_link", "opened_attachment",
+    "entered_information"}. The older single string report["actions"]
+    ("clicked / opened / none") is understood too.
+    """
+    report = report or {}
+    actions = report.get("actions_taken")
+    if not isinstance(actions, dict):
+        actions = {}
+    legacy = str(report.get("actions") or "").lower()
+    return {
+        "clicked_link": bool(actions.get("clicked_link")) or "click" in legacy,
+        "opened_attachment": bool(actions.get("opened_attachment")) or "open" in legacy,
+        "entered_information": bool(actions.get("entered_information")) or "enter" in legacy,
+    }
+
+
+def escalate_for_user_actions(report: Optional[Dict], ai: Dict, priority: str,
+                              triggered: List[str]) -> Tuple[str, List[str]]:
+    """Raise priority when the employee may already have been compromised.
+
+    Only ever RAISES a priority, never lowers it.
+    """
+    actions = read_actions(report)
+    rank = PRIORITY_RANK[priority]
+
+    if actions.get("entered_information") and rank < PRIORITY_RANK[PRIORITY_URGENT]:
+        return PRIORITY_URGENT, triggered + [
+            f"Upgraded to {PRIORITY_URGENT} because you entered information"]
+
+    exposed = actions.get("clicked_link") or actions.get("opened_attachment")
+    risky = ai.get("suspicious_link") or ai.get("attachment_risk")
+    if exposed and risky and rank < PRIORITY_RANK[PRIORITY_HIGH]:
+        return PRIORITY_HIGH, triggered + [
+            f"Upgraded to {PRIORITY_HIGH} because you clicked or opened an item flagged as suspicious"]
+
     return priority, triggered
