@@ -95,8 +95,11 @@ def analyze_email(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         )
  
         suspicious_link = bool(
-            re.search(r"(bit\.ly|tinyurl|goo\.gl)", " ".join(map(str, links)).lower())
-        )
+    re.search(
+        r"(bit\.ly|tinyurl\.com|goo\.gl|t\.co|is\.gd|ow\.ly|cutt\.ly)",
+        " ".join(map(str, links)).lower()
+    )
+)
  
         attachment_risk = any(
             str(a).lower().endswith((".exe", ".scr", ".js", ".zip", ".docm"))
