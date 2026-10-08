@@ -5,7 +5,7 @@
 #  Domain brain: turns the AI's assessment into a decision.
 #  The AI Manager owns the API, prompt, schema validation and retries;
 #  nothing in this file repeats that work.
-#
+
 #  Decision = THREE kinds of evidence, not just confidence:
 #     1. severity       -> the AI's threat_level
 #     2. corroboration  -> HOW MANY warning signs are true
@@ -18,8 +18,8 @@
 #  AI result: it can raise a report to Security Review, never higher.
 # ==============================================
 
-import re
 import copy
+import re
 from typing import Dict, List, Optional, Tuple
 
 # ──────────────────────────────────────────────
@@ -27,8 +27,6 @@ from typing import Dict, List, Optional, Tuple
 # ──────────────────────────────────────────────
 THREAT_LEVELS = ("low", "medium", "high", "critical")
 REVIEW_STATUSES = ("Pending Review", "Under Investigation", "Resolved", "False Positive")
-MAX_NOTE_LENGTH = 1000
-MAX_REVIEWER_LENGTH = 60
 
 PRIORITY_CRITICAL = "Critical"
 PRIORITY_URGENT = "Urgent Security Review"
@@ -57,7 +55,6 @@ PRIORITY_RANK = {
     PRIORITY_MANUAL: 2,
     PRIORITY_LOW: 1,
 }
-
 
 # Confidence needed for each rule. The "corroborated" value is the LOWER bar
 # used when 3+ warning signs agree: lots of red flags can make up for a
@@ -99,7 +96,6 @@ INDICATOR_LABELS = {
     "attachment_risk": "risky attachment",
 }
 
-
 # ── Risk score (0-100) ──
 # Design principle: severity is worth 60 points, warning signs 40 points.
 #   * Threat level moves in steps of 20, so a higher threat level always
@@ -118,6 +114,8 @@ INDICATOR_POINTS = {
     "urgency_manipulation": 6,
 }
 
+MAX_NOTE_LENGTH = 1000
+MAX_REVIEWER_LENGTH = 60
 
 # ── Keyword Checker (menu option 2) and keyword safety net ──
 # Our own word database. Add/remove words here anytime.
@@ -178,7 +176,6 @@ def has_usable_ai_result(ai_result) -> bool:
     )
 
 
-
 # ──────────────────────────────────────────────
 #  3. EVIDENCE HELPERS — the building blocks of the rules
 # ──────────────────────────────────────────────
@@ -203,7 +200,6 @@ def confidence_gate(ai: Dict, normal: float, corroborated: float) -> str:
     return ""
 
 
-
 def risk_score(ai: Dict) -> int:
     """0-100 score from threat level + true warning signs (no confidence)."""
     score = THREAT_POINTS.get(ai.get("threat_level"), 0)
@@ -222,8 +218,6 @@ def risk_breakdown(ai: Dict) -> str:
         if ai.get(field):
             parts.append(f"{INDICATOR_LABELS[field]} {points}")
     return " + ".join(parts) + f" = {risk_score(ai)}"
-
-
 
 
 # ──────────────────────────────────────────────
@@ -277,6 +271,66 @@ def scan_keywords(text: str, sender: str = "") -> Dict:
     return {"found": found, "score": score, "level": keyword_level(score)}
 
 
+def report_scan_inputs(report: Optional[Dict]) -> Tuple[str, str]:
+    """Pick the (text, sender) to keyword-scan out of a report dictionary.
+
+    Text = subject + body + URLs. For an email the employee did NOT open there
+    is no body, so their reason for suspicion is scanned instead.
+    """
+    report = report or {}
+    parts = [str(report.get("subject") or ""), str(report.get("body") or "")]
+
+    urls = report.get("urls") or report.get("links") or []
+    if isinstance(urls, str):
+        urls = [urls]
+    parts.extend(str(url) for url in urls)
+
+    if report.get("viewed") is False:
+        parts.append(str(report.get("reason_for_suspicion") or report.get("reason_not_viewed") or ""))
+
+    sender = f"{report.get('sender_name') or ''} {report.get('sender_email') or report.get('sender') or ''}"
+    return " ".join(parts).strip(), sender.strip()
+
+
+def scan_report_keywords(report: Optional[Dict]) -> Dict:
+    """Keyword-scan one employee report."""
+    text, sender = report_scan_inputs(report)
+    return scan_keywords(text, sender)
+
+
+def apply_keyword_safety_net(priority: str, scan: Dict, triggered: List[str]) -> Tuple[str, List[str]]:
+    """Raise a priority to Security Review when the keywords look dangerous.
+
+    A safety net behind the AI, not a second judge: it only ever RAISES a
+    priority, and never above Security Review. It matters most when the AI
+    was unavailable or sure the email was harmless while the wording says otherwise.
+    """
+    if scan["level"] in KEYWORD_ESCALATION_LEVELS and PRIORITY_RANK[priority] < PRIORITY_RANK[PRIORITY_SECURITY]:
+        words = sum(len(group) for group in scan["found"].values())
+        return PRIORITY_SECURITY, triggered + [
+            f"Upgraded to {PRIORITY_SECURITY} because the wording contains {words} red-flag words"]
+    return priority, triggered
+
+
+def read_actions(report: Optional[Dict]) -> Dict:
+    """The employee's three actions as booleans, whichever shape the report uses.
+
+    Preferred shape: report["actions_taken"] = {"clicked_link", "opened_attachment",
+    "entered_information"}. The older single string report["actions"]
+    ("clicked / opened / none") is understood too.
+    """
+    report = report or {}
+    actions = report.get("actions_taken")
+    if not isinstance(actions, dict):
+        actions = {}
+    legacy = str(report.get("actions") or "").lower()
+    return {
+        "clicked_link": bool(actions.get("clicked_link")) or "click" in legacy,
+        "opened_attachment": bool(actions.get("opened_attachment")) or "open" in legacy,
+        "entered_information": bool(actions.get("entered_information")) or "enter" in legacy,
+    }
+
+
 # ──────────────────────────────────────────────
 #  4. BUSINESS RULES
 # ──────────────────────────────────────────────
@@ -322,6 +376,31 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
     return matched
 
 
+def has_conflicting_indicators(ai: Dict) -> bool:
+    """A 'low' threat level that still has warning signs switched on."""
+    return ai["threat_level"] == "low" and count_indicators(ai) > 0
+
+
+def escalate_for_user_actions(report: Optional[Dict], ai: Dict, priority: str,
+                              triggered: List[str]) -> Tuple[str, List[str]]:
+    """Raise priority when the employee may already have been compromised.
+
+    Only ever RAISES a priority, never lowers it.
+    """
+    actions = read_actions(report)
+    rank = PRIORITY_RANK[priority]
+
+    if actions.get("entered_information") and rank < PRIORITY_RANK[PRIORITY_URGENT]:
+        return PRIORITY_URGENT, triggered + [
+            f"Upgraded to {PRIORITY_URGENT} because you entered information"]
+
+    exposed = actions.get("clicked_link") or actions.get("opened_attachment")
+    risky = ai.get("suspicious_link") or ai.get("attachment_risk")
+    if exposed and risky and rank < PRIORITY_RANK[PRIORITY_HIGH]:
+        return PRIORITY_HIGH, triggered + [
+            f"Upgraded to {PRIORITY_HIGH} because you clicked or opened an item flagged as suspicious"]
+
+    return priority, triggered
 
 
 def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
@@ -372,100 +451,6 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
     }
 
 
-def has_conflicting_indicators(ai: Dict) -> bool:
-    """A 'low' threat level that still has warning signs switched on."""
-    return ai["threat_level"] == "low" and count_indicators(ai) > 0
-
-
-
-
-def report_scan_inputs(report: Optional[Dict]) -> Tuple[str, str]:
-    """Pick the (text, sender) to keyword-scan out of a report dictionary.
-
-    Text = subject + body + URLs. For an email the employee did NOT open there
-    is no body, so their reason for suspicion is scanned instead.
-    """
-    report = report or {}
-    parts = [str(report.get("subject") or ""), str(report.get("body") or "")]
-
-    urls = report.get("urls") or report.get("links") or []
-    if isinstance(urls, str):
-        urls = [urls]
-    parts.extend(str(url) for url in urls)
-
-    if report.get("viewed") is False:
-        parts.append(str(report.get("reason_for_suspicion") or report.get("reason_not_viewed") or ""))
-
-    sender = f"{report.get('sender_name') or ''} {report.get('sender_email') or report.get('sender') or ''}"
-    return " ".join(parts).strip(), sender.strip()
-
-
-def scan_report_keywords(report: Optional[Dict]) -> Dict:
-    """Keyword-scan one employee report."""
-    text, sender = report_scan_inputs(report)
-    return scan_keywords(text, sender)
-
-
-def apply_keyword_safety_net(priority: str, scan: Dict, triggered: List[str]) -> Tuple[str, List[str]]:
-    """Raise a priority to Security Review when the keywords look dangerous.
-
-    A safety net behind the AI, not a second judge: it only ever RAISES a
-    priority, and never above Security Review. It matters most when the AI
-    was unavailable or sure the email was harmless while the wording says otherwise.
-    """
-    if scan["level"] in KEYWORD_ESCALATION_LEVELS and PRIORITY_RANK[priority] < PRIORITY_RANK[PRIORITY_SECURITY]:
-        words = sum(len(group) for group in scan["found"].values())
-        return PRIORITY_SECURITY, triggered + [
-            f"Upgraded to {PRIORITY_SECURITY} because the wording contains {words} red-flag words"]
-    return priority, triggered
-
-
-
-
-def read_actions(report: Optional[Dict]) -> Dict:
-    """The employee's three actions as booleans, whichever shape the report uses.
-
-    Preferred shape: report["actions_taken"] = {"clicked_link", "opened_attachment",
-    "entered_information"}. The older single string report["actions"]
-    ("clicked / opened / none") is understood too.
-    """
-    report = report or {}
-    actions = report.get("actions_taken")
-    if not isinstance(actions, dict):
-        actions = {}
-    legacy = str(report.get("actions") or "").lower()
-    return {
-        "clicked_link": bool(actions.get("clicked_link")) or "click" in legacy,
-        "opened_attachment": bool(actions.get("opened_attachment")) or "open" in legacy,
-        "entered_information": bool(actions.get("entered_information")) or "enter" in legacy,
-    }
-
-
-def escalate_for_user_actions(report: Optional[Dict], ai: Dict, priority: str,
-                              triggered: List[str]) -> Tuple[str, List[str]]:
-    """Raise priority when the employee may already have been compromised.
-
-    Only ever RAISES a priority, never lowers it.
-    """
-    actions = read_actions(report)
-    rank = PRIORITY_RANK[priority]
-
-    if actions.get("entered_information") and rank < PRIORITY_RANK[PRIORITY_URGENT]:
-        return PRIORITY_URGENT, triggered + [
-            f"Upgraded to {PRIORITY_URGENT} because you entered information"]
-
-    exposed = actions.get("clicked_link") or actions.get("opened_attachment")
-    risky = ai.get("suspicious_link") or ai.get("attachment_risk")
-    if exposed and risky and rank < PRIORITY_RANK[PRIORITY_HIGH]:
-        return PRIORITY_HIGH, triggered + [
-            f"Upgraded to {PRIORITY_HIGH} because you clicked or opened an item flagged as suspicious"]
-
-    return priority, triggered
-
-
-
-
-
 # ──────────────────────────────────────────────
 #  5. RECORD BUILDING
 # ──────────────────────────────────────────────
@@ -511,8 +496,6 @@ def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Option
     }
 
 
-
-
 # ──────────────────────────────────────────────
 #  6. IT / CYBERSECURITY REVIEW UPDATES
 # ──────────────────────────────────────────────
@@ -550,8 +533,6 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
     if reviewer:
         updated["assigned_reviewer"] = reviewer
     return updated, []
-
-
 
 
 # ──────────────────────────────────────────────
