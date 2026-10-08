@@ -18,7 +18,7 @@ WEIGHTS = {
     "urgency_manipulation": 1,
     "credential_request": 3,
     "suspicious_link": 3,
-    "attachment_risk": 3,
+    "attachment_risk": 2,
 }
  
  
@@ -114,9 +114,9 @@ def analyze_email(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         # Weighted score evaluation 
         score = sum(WEIGHTS[k] for k, v in signs.items() if v)
  
-        if score >= 9:
+        if score >= 8:
             threat_level, confidence = "critical", 0.90
-        elif score >= 6:
+        elif score >= 5:
             threat_level, confidence = "high", 0.85
         elif score >= 3:
             threat_level, confidence = "medium", 0.75
