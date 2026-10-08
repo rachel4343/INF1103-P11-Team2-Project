@@ -323,8 +323,11 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
 def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
     """Decide the final priority for one report.
 
+    Returns {"priority", "rules_triggered", "keyword_scan"}.
     Never raises when the AI result is missing: it routes to Manual Review.
     """
+    keyword_scan = scan_report_keywords(report)
+
     if not has_usable_ai_result(ai_result):
         priority = PRIORITY_MANUAL
         triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI result was unavailable or incomplete"]
@@ -351,9 +354,13 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
             priority = PRIORITY_SECURITY
             triggered.append(f"Upgraded to {PRIORITY_SECURITY} because the AI rated it low but still found warning signs")
 
+    # Keyword safety net (can only raise, capped at Security Review)
+    priority, triggered = apply_keyword_safety_net(priority, keyword_scan, triggered)
+
     return {
         "priority": priority,
         "rules_triggered": triggered,
+        "keyword_scan": keyword_scan,
     }
 
 
@@ -361,3 +368,46 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
 def has_conflicting_indicators(ai: Dict) -> bool:
     """A 'low' threat level that still has warning signs switched on."""
     return ai["threat_level"] == "low" and count_indicators(ai) > 0
+
+
+
+
+def report_scan_inputs(report: Optional[Dict]) -> Tuple[str, str]:
+    """Pick the (text, sender) to keyword-scan out of a report dictionary.
+
+    Text = subject + body + URLs. For an email the employee did NOT open there
+    is no body, so their reason for suspicion is scanned instead.
+    """
+    report = report or {}
+    parts = [str(report.get("subject") or ""), str(report.get("body") or "")]
+
+    urls = report.get("urls") or report.get("links") or []
+    if isinstance(urls, str):
+        urls = [urls]
+    parts.extend(str(url) for url in urls)
+
+    if report.get("viewed") is False:
+        parts.append(str(report.get("reason_for_suspicion") or report.get("reason_not_viewed") or ""))
+
+    sender = f"{report.get('sender_name') or ''} {report.get('sender_email') or report.get('sender') or ''}"
+    return " ".join(parts).strip(), sender.strip()
+
+
+def scan_report_keywords(report: Optional[Dict]) -> Dict:
+    """Keyword-scan one employee report."""
+    text, sender = report_scan_inputs(report)
+    return scan_keywords(text, sender)
+
+
+def apply_keyword_safety_net(priority: str, scan: Dict, triggered: List[str]) -> Tuple[str, List[str]]:
+    """Raise a priority to Security Review when the keywords look dangerous.
+
+    A safety net behind the AI, not a second judge: it only ever RAISES a
+    priority, and never above Security Review. It matters most when the AI
+    was unavailable or sure the email was harmless while the wording says otherwise.
+    """
+    if scan["level"] in KEYWORD_ESCALATION_LEVELS and PRIORITY_RANK[priority] < PRIORITY_RANK[PRIORITY_SECURITY]:
+        words = sum(len(group) for group in scan["found"].values())
+        return PRIORITY_SECURITY, triggered + [
+            f"Upgraded to {PRIORITY_SECURITY} because the wording contains {words} red-flag words"]
+    return priority, triggered
