@@ -20,6 +20,12 @@ WEIGHTS = {
     "suspicious_link": 3,
     "attachment_risk": 2,
 }
+
+RISKY_ATTACHMENT_EXTENSIONS = (
+    ".exe", ".scr", ".js", ".zip", ".docm",
+    ".xlsm", ".bat", ".cmd", ".vbs"
+)
+
  
  
 def validate_ai_schema(data: dict) -> bool:
@@ -102,9 +108,9 @@ def analyze_email(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
 )
  
         attachment_risk = any(
-            str(a).lower().endswith((".exe", ".scr", ".js", ".zip", ".docm"))
-            for a in attachments
-        )
+    str(a).lower().endswith(RISKY_ATTACHMENT_EXTENSIONS)
+    for a in attachments
+)
  
         signs = {
             "impersonation": impersonation,
