@@ -214,11 +214,28 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
             best = max(matched, key=lambda m: PRIORITY_RANK[m[0]])
             priority = best[0]
             triggered = [m[1] for m in matched]
+        elif ai["threat_level"] in ("high", "critical"):
+            # Fallback: the AI called it serious but was not confident enough for
+            # any rule. A serious threat must never rank below Security Review.
+            priority = PRIORITY_SECURITY
+            triggered = [f"Email check: {PRIORITY_SECURITY}, because the AI rated the threat {ai['threat_level']} "
+                         f"but was not sure enough for a firm rule"]
         else:
             priority = PRIORITY_MANUAL
             triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI was not sure enough to decide"]
+
+        # Conflicting indicators (low threat but warning signs): never stay below Security Review
+        if has_conflicting_indicators(ai) and PRIORITY_RANK[priority] < PRIORITY_RANK[PRIORITY_SECURITY]:
+            priority = PRIORITY_SECURITY
+            triggered.append(f"Upgraded to {PRIORITY_SECURITY} because the AI rated it low but still found warning signs")
 
     return {
         "priority": priority,
         "rules_triggered": triggered,
     }
+
+
+
+def has_conflicting_indicators(ai: Dict) -> bool:
+    """A 'low' threat level that still has warning signs switched on."""
+    return ai["threat_level"] == "low" and count_indicators(ai) > 0
