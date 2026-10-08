@@ -88,9 +88,12 @@ def analyze_email(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
  
         # Detection rules 
         impersonation = (
-            bool(re.search(r"\b(it|support|admin|helpdesk|security)\b", sender_info))
-            and bool(re.search(r"\b(verify|account|login|suspend)", full_text))
-        )
+    bool(re.search(r"\b(it support|helpdesk|security team|administrator)\b", sender_info))
+    and bool(re.search(
+        r"\b(verify|confirm|unlock|suspend|account|login|password)\b",
+        full_text
+    ))
+)
  
         urgency_manipulation = bool(
             re.search(r"\b(urgent|immediately|expir\w*|suspend\w*|deadline)\b", full_text)
