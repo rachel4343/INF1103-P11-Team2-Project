@@ -52,3 +52,44 @@ PRIORITY_RANK = {
     PRIORITY_MANUAL: 2,
     PRIORITY_LOW: 1,
 }
+
+
+# Confidence needed for each rule. The "corroborated" value is the LOWER bar
+# used when 3+ warning signs agree: lots of red flags can make up for a
+# hesitant AI. Dismissing a report (Low) never gets a lower bar.
+CONF_CRITICAL = 0.85
+CONF_CRITICAL_CORROBORATED = 0.75
+CONF_CREDENTIAL_LINK = 0.80
+CONF_CREDENTIAL_LINK_CORROBORATED = 0.70
+CONF_MEDIUM = 0.75
+CONF_MEDIUM_CORROBORATED = 0.65
+CONF_LOW = 0.90
+CORROBORATION_MIN_INDICATORS = 3
+
+# The AI fields the rules read. (Full schema validation is the AI Manager's job.)
+RULE_INPUT_FIELDS = (
+    "threat_level",
+    "confidence",
+    "impersonation",
+    "urgency_manipulation",
+    "credential_request",
+    "suspicious_link",
+    "attachment_risk",
+)
+
+INDICATOR_FIELDS = (
+    "impersonation",
+    "urgency_manipulation",
+    "credential_request",
+    "suspicious_link",
+    "attachment_risk",
+)
+
+# Plain-English names for the five warning signs (used in explanations).
+INDICATOR_LABELS = {
+    "impersonation": "impersonation",
+    "urgency_manipulation": "urgency pressure",
+    "credential_request": "credential request",
+    "suspicious_link": "suspicious link",
+    "attachment_risk": "risky attachment",
+}
