@@ -122,3 +122,28 @@ def has_usable_ai_result(ai_result) -> bool:
         and not isinstance(conf, bool)
         and 0.0 <= conf <= 1.0
     )
+
+
+
+# ──────────────────────────────────────────────
+#  3. EVIDENCE HELPERS — the building blocks of the rules
+# ──────────────────────────────────────────────
+def count_indicators(ai: Dict) -> int:
+    """How many of the 5 warning signs are true (0 to 5)."""
+    return sum(1 for field in INDICATOR_FIELDS if ai.get(field))
+
+
+def confidence_gate(ai: Dict, normal: float, corroborated: float) -> str:
+    """Is the AI confident ENOUGH? Returns a plain-language reason, or "" if not.
+
+    Passes if confidence >= the normal bar, OR if 3+ warning signs agree and
+    confidence >= the lower corroborated bar. The text goes into the record
+    so IT can see WHY a rule fired.
+    """
+    conf = ai["confidence"]
+    if conf >= normal:
+        return f"{conf:.0%} sure"
+    indicators = count_indicators(ai)
+    if indicators >= CORROBORATION_MIN_INDICATORS and conf >= corroborated:
+        return f"{conf:.0%} sure, backed by {indicators} warning signs"
+    return ""
