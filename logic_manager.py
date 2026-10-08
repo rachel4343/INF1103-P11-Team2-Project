@@ -457,3 +457,51 @@ def escalate_for_user_actions(report: Optional[Dict], ai: Dict, priority: str,
             f"Upgraded to {PRIORITY_HIGH} because you clicked or opened an item flagged as suspicious"]
 
     return priority, triggered
+
+
+
+
+
+# ──────────────────────────────────────────────
+#  5. RECORD BUILDING
+# ──────────────────────────────────────────────
+def next_report_id(records: List[Dict]) -> str:
+    """PG-0001, PG-0002 ... based on the highest id already stored.
+
+    Sequential (not random / time-based) so identical input on identical
+    stored data always gives identical output.
+    """
+    highest = 0
+    for record in records or []:
+        rid = record.get("report_id", "") if isinstance(record, dict) else ""
+        match = re.fullmatch(r"PG-(\d+)", str(rid))
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return f"PG-{highest + 1:04d}"
+
+
+def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Optional[str] = None) -> Dict:
+    """Combine the original report, AI analysis, priority and review status."""
+    valid = has_usable_ai_result(ai_result)
+    decision = apply_business_rules(report, ai_result)
+
+    return {
+        "report_id": report_id,
+        "report": report,
+        "ai_analysis": ai_result if valid else None,
+        "ai_error": "" if valid else (ai_error or "AI result unavailable"),
+        # Flat copies so the Data Manager can filter without digging
+        "threat_level": ai_result["threat_level"] if valid else "unknown",
+        "attack_type": (ai_result.get("attack_type") or "unknown") if valid else "unknown",
+        "indicator_count": count_indicators(ai_result) if valid else 0,
+        "risk_score": risk_score(ai_result) if valid else 0,
+        "risk_breakdown": risk_breakdown(ai_result) if valid else "not available (no AI result)",
+        "system_priority": decision["priority"],
+        "priority": decision["priority"],
+        "priority_overridden": False,
+        "rules_triggered": decision["rules_triggered"],
+        "keyword_scan": decision["keyword_scan"],
+        "review_status": "Pending Review",
+        "assigned_reviewer": "",
+        "investigation_notes": [],
+    }
