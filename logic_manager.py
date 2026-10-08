@@ -95,6 +95,23 @@ INDICATOR_LABELS = {
 }
 
 
+# ── Risk score (0-100) ──
+# Design principle: severity is worth 60 points, warning signs 40 points.
+#   * Threat level moves in steps of 20, so a higher threat level always
+#     outweighs any single warning sign.
+#   * The five warning signs total exactly 40 (10+10+7+7+6), ranked by how
+#     directly each one leads to compromise: credentials and links are the
+#     direct route in, impersonation and attachments need more steps, and
+#     urgency alone is only pressure.
+#   * 60 + 40 = 100, so the scale needs no arbitrary cap.
+THREAT_POINTS = {"low": 0, "medium": 20, "high": 40, "critical": 60}
+INDICATOR_POINTS = {
+    "credential_request": 10,
+    "suspicious_link": 10,
+    "impersonation": 7,
+    "attachment_risk": 7,
+    "urgency_manipulation": 6,
+}
 
 # ──────────────────────────────────────────────
 #  2. CAN THE RULES RUN? (not full schema validation: that is the AI Manager's job)
@@ -148,6 +165,26 @@ def confidence_gate(ai: Dict, normal: float, corroborated: float) -> str:
         return f"{conf:.0%} sure, backed by {indicators} warning signs"
     return ""
 
+
+
+def risk_score(ai: Dict) -> int:
+    """0-100 score from threat level + true warning signs (no confidence)."""
+    score = THREAT_POINTS.get(ai.get("threat_level"), 0)
+    for field, points in INDICATOR_POINTS.items():
+        if ai.get(field):
+            score += points
+    return score
+
+
+def risk_breakdown(ai: Dict) -> str:
+    """Show the working behind the risk score, e.g.
+    "medium threat 20 + suspicious link 10 = 30"."""
+    level = ai.get("threat_level")
+    parts = [f"{level} threat {THREAT_POINTS.get(level, 0)}"]
+    for field, points in INDICATOR_POINTS.items():
+        if ai.get(field):
+            parts.append(f"{INDICATOR_LABELS[field]} {points}")
+    return " + ".join(parts) + f" = {risk_score(ai)}"
 
 
 
