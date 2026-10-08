@@ -19,12 +19,16 @@
 # ==============================================
 
 import re
+import copy
 from typing import Dict, List, Optional, Tuple
 
 # ──────────────────────────────────────────────
 #  1. CONSTANTS — every number and label lives here
 # ──────────────────────────────────────────────
 THREAT_LEVELS = ("low", "medium", "high", "critical")
+REVIEW_STATUSES = ("Pending Review", "Under Investigation", "Resolved", "False Positive")
+MAX_NOTE_LENGTH = 1000
+MAX_REVIEWER_LENGTH = 60
 
 PRIORITY_CRITICAL = "Critical"
 PRIORITY_URGENT = "Urgent Security Review"
@@ -505,3 +509,44 @@ def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Option
         "assigned_reviewer": "",
         "investigation_notes": [],
     }
+
+
+
+
+# ──────────────────────────────────────────────
+#  6. IT / CYBERSECURITY REVIEW UPDATES
+# ──────────────────────────────────────────────
+def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
+    """Apply status / priority override / note / reviewer changes.
+
+    Returns (updated_copy, errors). If there are any errors the ORIGINAL
+    record is returned unchanged so nothing is half-applied.
+    """
+    errors = []
+    status = updates.get("review_status")
+    override = updates.get("priority_override")
+    note = str(updates.get("note") or "").strip()
+    reviewer = str(updates.get("assigned_reviewer") or "").strip()
+
+    if status is not None and status not in REVIEW_STATUSES:
+        errors.append(f"Invalid review status: {status}")
+    if override is not None and override not in PRIORITIES:
+        errors.append(f"Invalid priority: {override}")
+    if len(note) > MAX_NOTE_LENGTH:
+        errors.append(f"Note is too long (max {MAX_NOTE_LENGTH} characters)")
+    if len(reviewer) > MAX_REVIEWER_LENGTH:
+        errors.append(f"Reviewer name is too long (max {MAX_REVIEWER_LENGTH} characters)")
+    if errors:
+        return record, errors
+
+    updated = copy.deepcopy(record)
+    if status is not None:
+        updated["review_status"] = status
+    if override is not None:
+        updated["priority"] = override
+        updated["priority_overridden"] = override != updated.get("system_priority")
+    if note:
+        updated.setdefault("investigation_notes", []).append(note)
+    if reviewer:
+        updated["assigned_reviewer"] = reviewer
+    return updated, []
