@@ -194,3 +194,31 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
                         f"and found no suspicious link"))
 
     return matched
+
+
+
+
+def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
+    """Decide the final priority for one report.
+
+    Never raises when the AI result is missing: it routes to Manual Review.
+    """
+    if not has_usable_ai_result(ai_result):
+        priority = PRIORITY_MANUAL
+        triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI result was unavailable or incomplete"]
+    else:
+        ai = ai_result
+        matched = evaluate_rules(ai)
+        if matched:
+            # Conflicting rules: the HIGHEST-risk outcome wins
+            best = max(matched, key=lambda m: PRIORITY_RANK[m[0]])
+            priority = best[0]
+            triggered = [m[1] for m in matched]
+        else:
+            priority = PRIORITY_MANUAL
+            triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI was not sure enough to decide"]
+
+    return {
+        "priority": priority,
+        "rules_triggered": triggered,
+    }
