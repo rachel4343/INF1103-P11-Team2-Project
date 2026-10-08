@@ -550,3 +550,27 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
     if reviewer:
         updated["assigned_reviewer"] = reviewer
     return updated, []
+
+
+
+
+# ──────────────────────────────────────────────
+#  7. LOOKUP / ORDERING HELPERS
+# ──────────────────────────────────────────────
+def find_record_index(records: List[Dict], report_id: str) -> int:
+    """Index of the record with this id (case-insensitive), or -1."""
+    wanted = (report_id or "").strip().upper()
+    for index, record in enumerate(records or []):
+        if isinstance(record, dict) and str(record.get("report_id", "")).upper() == wanted:
+            return index
+    return -1
+
+
+def sort_records_by_priority(records: List[Dict]) -> List[Dict]:
+    """Most urgent first: priority rank, then risk score, then report id."""
+    return sorted(
+        records,
+        key=lambda r: (-PRIORITY_RANK.get(r.get("priority"), 0),
+                       -r.get("risk_score", 0),
+                       str(r.get("report_id", ""))),
+    )
