@@ -18,6 +18,7 @@
 #  AI result: it can raise a report to Security Review, never higher.
 # ==============================================
 
+import re
 from typing import Dict, List, Optional, Tuple
 
 # ──────────────────────────────────────────────
@@ -113,6 +114,38 @@ INDICATOR_POINTS = {
     "urgency_manipulation": 6,
 }
 
+
+# ── Keyword Checker (menu option 2) and keyword safety net ──
+# Our own word database. Add/remove words here anytime.
+KEYWORD_DATABASE = {
+    "urgency": [
+        "urgent", "immediately", "now", "expire", "deadline", "suspend",
+        "block", "close", "act fast", "right now", "limited time",
+    ],
+    "credential": [
+        "password", "login", "verify", "account", "otp", "pin",
+        "username", "sign in", "confirm", "credential",
+    ],
+    "impersonation": [
+        "it support", "helpdesk", "security team", "hr department",
+        "admin", "system admin", "technical team", "it department",
+    ],
+    "risky_links": [
+        "bit.ly", "tinyurl", "goo.gl", "login-verify", "account-verify",
+    ],
+}
+
+# Points per word found, per category
+KEYWORD_POINTS = {"urgency": 1, "credential": 2, "impersonation": 2, "risky_links": 2}
+
+# Score -> keyword level, checked from the top. Below 1 point = "safe".
+KEYWORD_LEVELS = ((6, "critical"), (4, "high"), (2, "medium"), (1, "low"))
+
+# Keyword levels that may raise a report. The raise is capped at Security Review,
+# so keywords alone can never create a Critical or Urgent report.
+KEYWORD_ESCALATION_LEVELS = ("high", "critical")
+
+
 # ──────────────────────────────────────────────
 #  2. CAN THE RULES RUN? (not full schema validation: that is the AI Manager's job)
 # ──────────────────────────────────────────────
@@ -186,6 +219,58 @@ def risk_breakdown(ai: Dict) -> str:
             parts.append(f"{INDICATOR_LABELS[field]} {points}")
     return " + ".join(parts) + f" = {risk_score(ai)}"
 
+
+
+
+# ──────────────────────────────────────────────
+#  3b. KEYWORD CHECKER — the team's word database (menu option 2)
+#      Pure functions: the I/O Manager collects the text and shows the result.
+# ──────────────────────────────────────────────
+def find_keywords(words: List[str], text: str) -> List[str]:
+    """Which of `words` appear in `text` (already lower-case)?
+
+    Matches whole words only, allowing simple endings (-s, -es, -ed, -d), so
+    "suspended" matches "suspend" but "know" does not match "now", "shopping"
+    does not match "pin" and "accounting" does not match "account".
+    """
+    found = []
+    for word in words:
+        pattern = r"(?<![a-z0-9])" + re.escape(word) + r"(?:s|es|ed|d)?(?![a-z0-9])"
+        if re.search(pattern, text):
+            found.append(word)
+    return found
+
+
+def keyword_level(score: int) -> str:
+    """Turn a keyword score into safe / low / medium / high / critical."""
+    for minimum, level in KEYWORD_LEVELS:
+        if score >= minimum:
+            return level
+    return "safe"
+
+
+def scan_keywords(text: str, sender: str = "") -> Dict:
+    """Check text against the word database.
+
+    Returns {"found": {category: [words]}, "score": int, "level": str}.
+    Impersonation words are looked for in the SENDER only, and only when
+    credential words are also present (impersonation + a credential request
+    is the dangerous combination).
+    """
+    text = (text or "").lower()
+    sender = (sender or "").lower()
+
+    found = {
+        "urgency": find_keywords(KEYWORD_DATABASE["urgency"], text),
+        "credential": find_keywords(KEYWORD_DATABASE["credential"], text),
+        "impersonation": [],
+        "risky_links": find_keywords(KEYWORD_DATABASE["risky_links"], text),
+    }
+    if found["credential"]:
+        found["impersonation"] = find_keywords(KEYWORD_DATABASE["impersonation"], sender)
+
+    score = sum(KEYWORD_POINTS[category] * len(words) for category, words in found.items())
+    return {"found": found, "score": score, "level": keyword_level(score)}
 
 
 # ──────────────────────────────────────────────
