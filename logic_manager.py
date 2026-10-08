@@ -147,3 +147,50 @@ def confidence_gate(ai: Dict, normal: float, corroborated: float) -> str:
     if indicators >= CORROBORATION_MIN_INDICATORS and conf >= corroborated:
         return f"{conf:.0%} sure, backed by {indicators} warning signs"
     return ""
+
+
+
+
+# ──────────────────────────────────────────────
+#  4. BUSINESS RULES
+# ──────────────────────────────────────────────
+def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
+    """Return EVERY (priority, reason) whose conditions match the AI fields."""
+    matched = []
+    level = ai["threat_level"]
+    indicators = count_indicators(ai)
+
+    # Rule 1: critical severity + enough confidence (or strong corroboration)
+    gate = confidence_gate(ai, CONF_CRITICAL, CONF_CRITICAL_CORROBORATED)
+    if level == "critical" and gate:
+        matched.append((PRIORITY_CRITICAL,
+                        f"Email check: {PRIORITY_CRITICAL}, because the AI rated the threat critical ({gate})"))
+
+    # Rule 2: credentials requested via a suspicious link (multi-condition)
+    gate = confidence_gate(ai, CONF_CREDENTIAL_LINK, CONF_CREDENTIAL_LINK_CORROBORATED)
+    if ai["credential_request"] and ai["suspicious_link"] and gate:
+        matched.append((PRIORITY_URGENT,
+                        f"Email check: {PRIORITY_URGENT}, because the email asks for credentials through a suspicious link ({gate})"))
+
+    # Rule 3: high severity backed by impersonation + urgency, or by 3+ warning signs
+    if level == "high":
+        if ai["impersonation"] and ai["urgency_manipulation"]:
+            matched.append((PRIORITY_HIGH,
+                            f"Email check: {PRIORITY_HIGH}, because the AI rated the threat high and found impersonation and urgency pressure"))
+        elif indicators >= CORROBORATION_MIN_INDICATORS:
+            matched.append((PRIORITY_HIGH,
+                            f"Email check: {PRIORITY_HIGH}, because the AI rated the threat high and found {indicators} warning signs"))
+
+    # Rule 4: medium severity + enough confidence (or corroboration)
+    gate = confidence_gate(ai, CONF_MEDIUM, CONF_MEDIUM_CORROBORATED)
+    if level == "medium" and gate:
+        matched.append((PRIORITY_SECURITY,
+                        f"Email check: {PRIORITY_SECURITY}, because the AI rated the threat medium ({gate})"))
+
+    # Rule 5: dismiss as low ONLY with very high confidence and no suspicious link
+    if level == "low" and ai["confidence"] >= CONF_LOW and not ai["suspicious_link"]:
+        matched.append((PRIORITY_LOW,
+                        f"Email check: {PRIORITY_LOW}, because the AI rated the threat low ({ai['confidence']:.0%} sure) "
+                        f"and found no suspicious link"))
+
+    return matched
