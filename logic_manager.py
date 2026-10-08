@@ -93,3 +93,32 @@ INDICATOR_LABELS = {
     "suspicious_link": "suspicious link",
     "attachment_risk": "risky attachment",
 }
+
+
+
+# ──────────────────────────────────────────────
+#  2. CAN THE RULES RUN? (not full schema validation: that is the AI Manager's job)
+# ──────────────────────────────────────────────
+def has_usable_ai_result(ai_result) -> bool:
+    """True if the AI Manager handed over a result the rules can safely read.
+
+    The AI Manager validates the schema and retries. It passes None when the
+    AI failed or stayed invalid after retry. This supports the brief's rule
+    "required AI fields missing / invalid after retry -> Manual Review Required".
+
+    Beyond "no field is None", this also checks the two fields whose WRONG TYPE
+    would crash the rules (a string confidence would break `conf >= 0.85`, an
+    unknown threat level would break the lookup tables). It is a crash guard,
+    not a second schema validator.
+    """
+    if not isinstance(ai_result, dict):
+        return False
+    if any(ai_result.get(field) is None for field in RULE_INPUT_FIELDS):
+        return False
+    conf = ai_result["confidence"]
+    return (
+        ai_result["threat_level"] in THREAT_LEVELS
+        and isinstance(conf, (int, float))
+        and not isinstance(conf, bool)
+        and 0.0 <= conf <= 1.0
+    )
