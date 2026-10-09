@@ -99,3 +99,47 @@ def prompt_yes_no(label: str) -> bool:
         if answer in ("n", "no"):
             return False
         display_error("Please answer yes or no.")
+
+def prompt_choice(label: str, options: List[str], allow_skip: bool = False) -> Optional[str]:
+    display_message(label)
+    for number, option in enumerate(options, start=1):
+        display_message(f"  {number}. {option}")
+    suffix = " (Enter to skip)" if allow_skip else ""
+    while True:
+        raw = input(f"Choose 1-{len(options)}{suffix}: ").strip()
+        if allow_skip and not raw:
+            return None
+        if raw.isdigit() and 1 <= int(raw) <= len(options):
+            return options[int(raw) - 1]
+        display_error(f"Please enter a number from 1 to {len(options)}.")
+
+
+def prompt_multiline(label: str, max_length: int = MAX_BODY_LENGTH) -> str:
+    """Read lines until a line containing only END. Body is required."""
+    while True:
+        display_message(f"{label} (type {BODY_END_MARKER} on its own line to finish):")
+        lines = []
+        while True:
+            line = input()
+            if line.strip() == BODY_END_MARKER:
+                break
+            lines.append(line)
+        text = clean_text("\n".join(lines))
+        if not text:
+            display_error("This field is required.")
+        elif len(text) > max_length:
+            display_error(f"Too long (max {max_length} characters). Please shorten it.")
+        else:
+            return text
+
+
+def is_valid_email(value: str) -> bool:
+    return EMAIL_PATTERN.match(value) is not None
+
+
+def is_valid_url(value: str) -> bool:
+    return " " not in value and "." in value and len(value) <= MAX_URL_LENGTH
+
+
+def is_valid_filename(value: str) -> bool:
+    return FILENAME_PATTERN.match(value) is not None
