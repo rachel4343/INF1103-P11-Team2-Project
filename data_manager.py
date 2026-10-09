@@ -1,8 +1,28 @@
 import json
+import os
+import time
 from typing import Dict
 
 DATA_FILE = "phishguard_reports.json"
 
+def _load():
+    """Read saved reports; keep an unreadable file as a backup instead of wiping it."""
+    if not os.path.exists(DATA_FILE):
+        return []
+    try:
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    backup = f"{DATA_FILE}.corrupt-{time.strftime('%Y%m%d%H%M%S')}"
+    try:
+        os.replace(DATA_FILE, backup)
+        print(f"\n Warning: unreadable data file, kept as {backup}")
+    except OSError:
+        pass
+    return []
 
 def save_report(report: Dict, decision: Dict):
     records = []
