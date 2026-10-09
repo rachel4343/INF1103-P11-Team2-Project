@@ -23,6 +23,7 @@ INDICATOR_LABELS = {
     "attachment_risk": "Risky attachment",
 }
 
+
 # ──────────────────────────────────────────────
 #  PRIVACY PROTECTION — blur before anything is stored or sent
 # ──────────────────────────────────────────────
@@ -70,6 +71,7 @@ def truncate(text, width: int) -> str:
 def yes_no_text(value) -> str:
     return "Yes" if value else "No"
 
+
 # ──────────────────────────────────────────────
 #  VALIDATING INPUT HELPERS — reject and re-prompt
 # ──────────────────────────────────────────────
@@ -99,6 +101,7 @@ def prompt_yes_no(label: str) -> bool:
         if answer in ("n", "no"):
             return False
         display_error("Please answer yes or no.")
+
 
 def prompt_choice(label: str, options: List[str], allow_skip: bool = False) -> Optional[str]:
     display_message(label)
@@ -143,6 +146,7 @@ def is_valid_url(value: str) -> bool:
 
 def is_valid_filename(value: str) -> bool:
     return FILENAME_PATTERN.match(value) is not None
+
 
 def prompt_list(label: str, item_validator, error_message: str) -> List[str]:
     """Comma-separated list. Optional; re-prompts if ANY item is invalid."""
@@ -224,6 +228,7 @@ def collect_report_input() -> Dict:
         },
     }
 
+
 # ──────────────────────────────────────────────
 #  MENUS AND SELECTION
 # ──────────────────────────────────────────────
@@ -271,6 +276,7 @@ def display_keyword_results(result: Dict) -> None:
                         f"(score {result.get('score', 0)})")
     display_message("    Word check only. Submit a report for the full AI assessment.")
     input("\nPress Enter to continue...")
+
 
 def collect_filter_criteria(threat_levels, statuses) -> Optional[Tuple[str, str]]:
     """Ask how to filter the list. Returns (field, value) or None for 'show all'."""
@@ -322,6 +328,7 @@ def collect_review_update(statuses, priorities) -> Dict:
 
     return updates
 
+
 # ──────────────────────────────────────────────
 #  DISPLAY — records
 # ──────────────────────────────────────────────
@@ -370,3 +377,47 @@ def display_record_list(records: List[Dict]) -> None:
             f"{truncate(subject, 25)}"
         )
 
+
+def display_record_detail(record: Dict) -> None:
+    """Full view of one record for IT/cybersecurity review."""
+    report = record.get("report") or {}
+    actions = report.get("actions_taken") or {}
+    display_header(f"Report {record.get('report_id', '?')}")
+
+    display_message("  -- Original report --")
+    display_message(f"  Viewed by employee : {yes_no_text(report.get('viewed'))}")
+    name, address = report.get("sender_name", ""), report.get("sender_email", "")
+    sender = "Not provided" if address == "Not provided" and name == "Not provided" else f"{name} <{address}>"
+    display_message(f"  Sender             : {sender}")
+    display_message(f"  Subject            : {report.get('subject', '')}")
+    display_message(f"  Reason suspicious  : {report.get('reason_for_suspicion', '')}")
+    display_message(f"  URLs               : {', '.join(report.get('urls', [])) or 'none'}")
+    display_message(f"  Attachments        : {', '.join(report.get('attachments', [])) or 'none'}")
+    display_message(f"  Clicked link       : {yes_no_text(actions.get('clicked_link'))}")
+    display_message(f"  Opened attachment  : {yes_no_text(actions.get('opened_attachment'))}")
+    display_message(f"  Entered info       : {yes_no_text(actions.get('entered_information'))}")
+    if report.get("body"):
+        display_message("  Body:")
+        for line in str(report["body"]).splitlines():
+            display_message(f"    {line}")
+
+    display_message("\n  -- Assessment --")
+    ai = record.get("ai_analysis")
+    if ai:
+        found = [label for key, label in INDICATOR_LABELS.items() if ai.get(key)]
+        display_message(f"  Threat / attack    : {ai.get('threat_level')} / {ai.get('attack_type')}")
+        display_message(f"  Confidence         : {ai.get('confidence', 0):.0%}")
+        display_message(f"  Indicators         : {', '.join(found) or 'none'}")
+        display_message(f"  Risk score         : {record.get('risk_score', 0)} / 100")
+        display_message(f"  Explanation        : {ai.get('explanation', '')}")
+    else:
+        display_message(f"  AI unavailable     : {record.get('ai_error', '')}")
+
+    overridden = " (overridden)" if record.get("priority_overridden") else ""
+    display_message(f"  Priority           : {record.get('priority')}{overridden}")
+    display_message(f"  Status             : {record.get('review_status')}")
+    display_message(f"  Assigned reviewer  : {record.get('assigned_reviewer') or 'unassigned'}")
+    notes = record.get("investigation_notes", [])
+    display_message(f"  Investigation notes: {len(notes)}")
+    for number, note in enumerate(notes, start=1):
+        display_message(f"    {number}. {note}")
