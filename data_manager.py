@@ -39,6 +39,7 @@ def _scam_text(report: Dict) -> str:
     return "".join(c for c in text if c.isalpha())
 
 def save_report(report: Dict, decision: Dict):
+    """Save a report to the JSON file, skipping duplicates and flagging repeat scams."""
     records = _load()
  
     for r in records:
