@@ -224,3 +224,50 @@ def collect_report_input() -> Dict:
         },
     }
 
+# ──────────────────────────────────────────────
+#  MENUS AND SELECTION
+# ──────────────────────────────────────────────
+def show_main_menu() -> int:
+    display_header("PHISHGUARD — Main Menu")
+    display_message("  1. Submit Email Report")
+    display_message("  2. Keyword Checker Tool")
+    display_message("  3. Exit")
+    while True:
+        raw = input("\nChoose (1-3): ").strip()
+        if raw in ("1", "2", "3"):
+            return int(raw)
+        display_error("Please choose 1, 2 or 3.")
+
+
+KEYWORD_LABELS = {
+    "urgency": "Urgency words",
+    "credential": "Login/Password words",
+    "impersonation": "Impersonation",
+    "risky_links": "Risky links",
+}
+
+
+def collect_keyword_text() -> str:
+    """Keyword Checker input. Returns "" if the user pressed Enter."""
+    display_header("PHISHGUARD Keyword Checker")
+    display_message("  Quick offline word check. No AI is used and nothing is saved.")
+    return prompt_text("Paste text to scan (Enter to cancel)", required=False,
+                       max_length=MAX_BODY_LENGTH)
+
+
+def display_keyword_results(result: Dict) -> None:
+    """Show what logic_manager.scan_keywords() found."""
+    display_message("\n  Results:")
+    found = result.get("found", {})
+    for key, label in KEYWORD_LABELS.items():
+        words = found.get(key) or []
+        if words:
+            display_message(f"    {label}: {', '.join(words)}")
+
+    if result.get("level") == "safe":
+        display_message("    No red flags found")
+    else:
+        display_message(f"    Keyword level: {str(result.get('level')).upper()} "
+                        f"(score {result.get('score', 0)})")
+    display_message("    Word check only. Submit a report for the full AI assessment.")
+    input("\nPress Enter to continue...")
