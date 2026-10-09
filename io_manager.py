@@ -321,3 +321,52 @@ def collect_review_update(statuses, priorities) -> Dict:
         updates["note"] = note
 
     return updates
+
+# ──────────────────────────────────────────────
+#  DISPLAY — records
+# ──────────────────────────────────────────────
+def display_assessment(record: Dict) -> None:
+    """Result screen shown right after a report is analysed."""
+    ai = record.get("ai_analysis")
+    display_header("PHISHGUARD ASSESSMENT")
+    display_message(f"  Report ID : {record.get('report_id', '?')}")
+    display_message(f"  Priority  : {record.get('priority', '?')}")
+
+    if ai:
+        display_message(f"  Threat    : {str(ai.get('threat_level', '?')).upper()} "
+                        f"({ai.get('confidence', 0):.0%} confidence)")
+        display_message(f"  Attack    : {ai.get('attack_type', '?')}")
+        found = [label for key, label in INDICATOR_LABELS.items() if ai.get(key)]
+        display_message("  Indicators: " + (", ".join(found) if found else "none detected")
+                        + f"  ({record.get('indicator_count', len(found))} of 5)")
+        display_message(f"  Risk score: {record.get('risk_score', 0)} / 100")
+        display_message(f"  AI advice : {ai.get('recommended_action', '')}")
+        display_message(f"  Why       : {ai.get('explanation', '')}")
+    else:
+        display_message("  AI result : unavailable, sent for manual review")
+        if record.get("ai_error"):
+            display_message(f"  Reason    : {truncate(record['ai_error'], 100)}")
+
+    for rule in record.get("rules_triggered", []):
+        display_message(f"  Rule      : {rule}")
+
+
+def display_record_list(records: List[Dict]) -> None:
+    """One-line summary per record."""
+    display_header(f"Reports ({len(records)})")
+    if not records:
+        display_message("  No reports to show.")
+        return
+    display_message(f"  {'ID':<8} {'Priority':<23} {'Threat':<9} {'Score':<6} {'Status':<20} Subject")
+    display_message("  " + "-" * (LINE_WIDTH + 10))
+    for r in records:
+        subject = (r.get("report") or {}).get("subject", "")
+        display_message(
+            f"  {truncate(r.get('report_id', '?'), 8):<8} "
+            f"{truncate(r.get('priority', '?'), 23):<23} "
+            f"{truncate(r.get('threat_level', '?'), 9):<9} "
+            f"{str(r.get('risk_score', 0)):<6} "
+            f"{truncate(r.get('review_status', '?'), 20):<20} "
+            f"{truncate(subject, 25)}"
+        )
+
