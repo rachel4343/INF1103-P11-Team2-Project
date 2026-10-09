@@ -43,3 +43,30 @@ def blur_privacy(text: str) -> str:
 def clean_text(text: str) -> str:
     """Strip control characters and surrounding whitespace."""
     return "".join(ch for ch in text if ch.isprintable() or ch == "\n").strip()
+
+
+# ──────────────────────────────────────────────
+#  BASIC OUTPUT
+# ──────────────────────────────────────────────
+def display_message(text: str = "") -> None:
+    print(text)
+
+
+def display_error(text: str) -> None:
+    print(f"  [!] {text}")
+
+
+def display_header(title: str) -> None:
+    print("\n" + "=" * LINE_WIDTH)
+    print(f"  {title}")
+    print("=" * LINE_WIDTH)
+
+
+def truncate(text, width: int) -> str:
+    text = str(text if text is not None else "")
+    return text if len(text) <= width else text[: width - 3] + "..."
+
+
+def yes_no_text(value) -> str:
+    return "Yes" if value else "No"
+
