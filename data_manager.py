@@ -31,6 +31,13 @@ def _write(records):
         json.dump(records, f, indent=2)
     os.replace(tmp, DATA_FILE)
 
+def _scam_text(report: Dict) -> str:
+    """Subject and body reduced to lowercase letters, so small edits don't hide the same scam."""
+    if not report.get("viewed"):
+        return ""
+    text = f"{report.get('subject', '')} {report.get('body', '')}".lower()
+    return "".join(c for c in text if c.isalpha())
+
 def save_report(report: Dict, decision: Dict):
     records = _load()
  
