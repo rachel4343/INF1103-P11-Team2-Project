@@ -24,6 +24,13 @@ def _load():
         pass
     return []
 
+def _write(records):
+    """Write to a temp file, then swap it in so a crash can't leave a half-written file."""
+    tmp = DATA_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(records, f, indent=2)
+    os.replace(tmp, DATA_FILE)
+
 def save_report(report: Dict, decision: Dict):
     records = []
 
