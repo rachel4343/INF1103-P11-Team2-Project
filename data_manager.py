@@ -32,28 +32,28 @@ def _write(records):
     os.replace(tmp, DATA_FILE)
 
 def save_report(report: Dict, decision: Dict):
-    records = []
-
-    if os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r") as f:
-                records = json.load(f)
-        except:
-            records = []
-
-    full_record = {
+    records = _load()
+ 
+    for r in records:
+        if r.get("report") == report:
+            print("\n Duplicate report - already saved, not added again.")
+            return
+ 
+    scam = _scam_text(report)
+    same_scam = sum(1 for r in records if scam and _scam_text(r.get("report") or {}) == scam)
+ 
+    records.append({
         "viewed_email": report["viewed"],
         "report": report,
         "decision": decision,
         "status": "Pending Review",
         "report_id": f"R{len(records) + 1:03d}",
-        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S")
-    }
-
-    records.append(full_record)
-
-    with open(DATA_FILE, "w") as f:
-        json.dump(records, f, indent=2)
-
+        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "same_scam_before": same_scam
+    })
+    _write(records)
+ 
     print(f"\n Saved! Total reports: {len(records)}")
     print(f"   File: {DATA_FILE}")
+    if same_scam:
+        print(f"   Note: this scam was reported {same_scam} time(s) before")
