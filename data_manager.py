@@ -45,7 +45,9 @@ def save_report(report: Dict, decision: Dict):
         "viewed_email": report["viewed"],
         "report": report,
         "decision": decision,
-        "status": "Pending Review"
+        "status": "Pending Review",
+        "report_id": f"R{len(records) + 1:03d}",
+        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S")
     }
 
     records.append(full_record)
