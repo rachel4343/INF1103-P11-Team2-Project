@@ -1,0 +1,4 @@
+phishguard_reports.json
+phishguard_reports.json.tmp
+phishguard_reports.json.corrupt-*
+*.tmp
