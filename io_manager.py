@@ -271,3 +271,31 @@ def display_keyword_results(result: Dict) -> None:
                         f"(score {result.get('score', 0)})")
     display_message("    Word check only. Submit a report for the full AI assessment.")
     input("\nPress Enter to continue...")
+
+def collect_filter_criteria(threat_levels, statuses) -> Optional[Tuple[str, str]]:
+    """Ask how to filter the list. Returns (field, value) or None for 'show all'."""
+    field = prompt_choice(
+        "\nFilter reports by:",
+        ["Show all", "Threat level", "Attack type", "Review status"],
+    )
+    if field == "Show all":
+        return None
+    if field == "Threat level":
+        return "threat_level", prompt_choice("Threat level:", list(threat_levels) + ["unknown"])
+    if field == "Review status":
+        return "review_status", prompt_choice("Review status:", list(statuses))
+    return "attack_type", prompt_text("Attack type (e.g. credential harvesting)")
+
+
+def collect_record_id(records: List[Dict]) -> Optional[str]:
+    """Ask for a report id that exists. Enter cancels (returns None)."""
+    known = {str(r.get("report_id", "")).upper() for r in records}
+    while True:
+        raw = input("Enter report ID (e.g. PG-0001, Enter to cancel): ").strip()
+        if not raw:
+            return None
+        if raw.upper() in known:
+            return raw
+        display_error("No report with that ID.")
+
+
