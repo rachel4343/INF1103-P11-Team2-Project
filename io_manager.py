@@ -70,3 +70,32 @@ def truncate(text, width: int) -> str:
 def yes_no_text(value) -> str:
     return "Yes" if value else "No"
 
+# ──────────────────────────────────────────────
+#  VALIDATING INPUT HELPERS — reject and re-prompt
+# ──────────────────────────────────────────────
+def prompt_text(label: str, required: bool = True, max_length: int = MAX_FIELD_LENGTH,
+                validator=None, error_message: str = "Invalid input.") -> str:
+    while True:
+        value = clean_text(input(f"{label}: "))
+        if not value:
+            if required:
+                display_error("This field is required.")
+                continue
+            return ""
+        if len(value) > max_length:
+            display_error(f"Too long (max {max_length} characters).")
+            continue
+        if validator is not None and not validator(value):
+            display_error(error_message)
+            continue
+        return value
+
+
+def prompt_yes_no(label: str) -> bool:
+    while True:
+        answer = input(f"{label} (yes/no): ").strip().lower()
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
+        display_error("Please answer yes or no.")
