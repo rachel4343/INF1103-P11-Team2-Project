@@ -143,3 +143,84 @@ def is_valid_url(value: str) -> bool:
 
 def is_valid_filename(value: str) -> bool:
     return FILENAME_PATTERN.match(value) is not None
+
+def prompt_list(label: str, item_validator, error_message: str) -> List[str]:
+    """Comma-separated list. Optional; re-prompts if ANY item is invalid."""
+    while True:
+        raw = clean_text(input(f"{label} (comma-separated, Enter if none): "))
+        items = [item.strip() for item in raw.split(",") if item.strip()]
+        bad = [item for item in items if not item_validator(item)]
+        if bad:
+            display_error(f"{error_message}: {', '.join(truncate(b, 40) for b in bad)}")
+            continue
+        return items
+
+
+# ──────────────────────────────────────────────
+#  COLLECT — employee report (Yes/No flow)
+# ──────────────────────────────────────────────
+def collect_report_input() -> Dict:
+    """Collect, validate and privacy-blur one suspicious-email report."""
+    display_header("Submit Email Report")
+
+    viewed = prompt_yes_no("Did you open/view this email?")
+    no_actions = {"clicked_link": False, "opened_attachment": False, "entered_information": False}
+
+    if not viewed:
+        display_message("\nNo problem. Give us whatever you know.")
+        reason = prompt_text("Why are you suspicious / why didn't you open it")
+        sender_email = prompt_text("Sender email (Enter if unknown)", required=False,
+                                   validator=is_valid_email,
+                                   error_message="That doesn't look like an email address.")
+        sender_name = prompt_text("Sender display name (Enter if unknown)", required=False)
+        subject = prompt_text("Subject line (Enter if unknown)", required=False)
+        return {
+            "viewed": False,
+            "sender_email": sender_email or "Not provided",
+            "sender_name": blur_privacy(sender_name) or "Not provided",
+            "subject": blur_privacy(subject) or "Not provided",
+            "body": "",
+            "urls": [],
+            "attachments": [],
+            "reason_for_suspicion": blur_privacy(reason),
+            "actions_taken": no_actions,
+        }
+
+    display_message("\nEnter the email details.")
+    sender_email = prompt_text("Sender email", validator=is_valid_email,
+                               error_message="That doesn't look like an email address.")
+    sender_name = prompt_text("Sender display name", required=False)
+    subject = prompt_text("Email subject")
+    body = prompt_multiline("Email message")
+    urls = prompt_list("URLs found", is_valid_url, "Not a valid URL")
+    attachments = prompt_list("Attachment file names", is_valid_filename,
+                              "Not a valid file name (need a name and extension)")
+    reason = prompt_text("Why do you think it is suspicious", required=False)
+
+    display_message("\nWhat did you do with the email?")
+    clicked = prompt_yes_no("Did you click any link?") if urls else False
+    opened = prompt_yes_no("Did you open any attachment?") if attachments else False
+    entered = prompt_yes_no("Did you enter any password or personal information?")
+
+    body_safe = blur_privacy(body)
+    if body_safe != body:
+        display_message("  Privacy protected: sensitive details in the message were hidden.")
+
+    # The reported sender is the attacker's address, not the employee's
+    # personal data, so it is kept as-is for spoofing analysis.
+    return {
+        "viewed": True,
+        "sender_email": sender_email,
+        "sender_name": blur_privacy(sender_name) or "Not provided",
+        "subject": blur_privacy(subject),
+        "body": body_safe,
+        "urls": urls,
+        "attachments": attachments,
+        "reason_for_suspicion": blur_privacy(reason) or "Not provided",
+        "actions_taken": {
+            "clicked_link": clicked,
+            "opened_attachment": opened,
+            "entered_information": entered,
+        },
+    }
+
