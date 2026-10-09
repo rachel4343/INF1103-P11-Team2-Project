@@ -22,3 +22,24 @@ INDICATOR_LABELS = {
     "suspicious_link": "Suspicious link",
     "attachment_risk": "Risky attachment",
 }
+
+# ──────────────────────────────────────────────
+#  PRIVACY PROTECTION — blur before anything is stored or sent
+# ──────────────────────────────────────────────
+def blur_privacy(text: str) -> str:
+    """Hide NRIC/FIN, phone numbers and email local-parts.
+
+    S1234567A -> S*******A | 91234567 -> 91****67 | john@x.com -> j***@x.com
+    The email domain is kept on purpose: it is a key spoofing indicator.
+    """
+    if not text:
+        return text
+    text = re.sub(r"\b([STFGMstfgm])\d{7}([A-Za-z])\b", r"\1*******\2", text)
+    text = re.sub(r"(?<!\d)([689]\d)\d{4}(\d{2})(?!\d)", r"\1****\2", text)
+    text = re.sub(r"([\w.+-])[\w.+-]*@([\w-]+(?:\.[\w-]+)+)", r"\1***@\2", text)
+    return text
+
+
+def clean_text(text: str) -> str:
+    """Strip control characters and surrounding whitespace."""
+    return "".join(ch for ch in text if ch.isprintable() or ch == "\n").strip()
