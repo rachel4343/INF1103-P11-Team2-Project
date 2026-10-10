@@ -27,3 +27,10 @@ def handle_submit(records):
     io_manager.display_assessment(record)
     io_manager.display_message(f"\n  Saved. Total reports: {len(records)}")
 
+def handle_keyword_check():
+    text = io_manager.collect_keyword_text()
+    if not text:
+        io_manager.display_message("  Nothing entered.")
+        return
+    result = logic_manager.scan_keywords(text)
+    io_manager.display_keyword_results(result)
