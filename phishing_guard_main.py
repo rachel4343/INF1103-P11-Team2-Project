@@ -25,3 +25,24 @@ def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     else:
         subject = str(report.get("subject") or "")
         body = str(report.get("body") or "")
+
+    sender = f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
+    
+    prompt = f"""Analyze this email for phishing. Return ONLY valid JSON.
+
+SENDER: {sender}
+SUBJECT: {subject}
+BODY: {body}
+
+Respond with:
+{{
+  "threat_level": "low|medium|high|critical",
+  "confidence": 0.0 to 1.0,
+  "impersonation": true or false,
+  "urgency_manipulation": true or false,
+  "credential_request": true or false,
+  "suspicious_link": true or false,
+  "attachment_risk": true or false,
+  "attack_type": "type or none",
+  "explanation": "Brief reason"
+}}"""
