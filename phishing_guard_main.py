@@ -68,3 +68,36 @@ JSON format:
     except Exception as e:
         return None, f"Error: {str(e)}"
 
+def analyze_email(report: Dict):
+    viewed = report.get("viewed", True)
+
+    if not viewed:
+        return call_gemini_api(
+            "NOT VIEWED",
+            f"Reason: {report.get('reason_not_viewed', '')}",
+            report.get("sender", "")
+        )
+
+    body_text = report.get("body", "")
+    links = report.get("links", [])
+    if links:
+        body_text += f"\nLinks: {', '.join(links)}"
+
+    result, error = call_gemini_api(
+        report.get("subject", ""),
+        body_text,
+        f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
+    )
+
+    if error:
+        return None, error
+
+    level = result.get("threat_level", "low")
+    if level in ("critical", "high"):
+        result["recommended_action"] = "Do NOT click links. Report to Security."
+    elif level == "medium":
+        result["recommended_action"] = "Verify sender through official contact."
+    else:
+        result["recommended_action"] = "No immediate action."
+
+    return result, None
