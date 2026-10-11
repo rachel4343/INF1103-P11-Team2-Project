@@ -46,3 +46,26 @@ Respond with:
   "attack_type": "type or none",
   "explanation": "Brief reason"
 }}"""
+
+    try:
+        resp = requests.post(
+            f"{API_URL}?key={API_KEY}",
+            headers={"Content-Type": "application/json"},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.1}
+            },
+            timeout=60
+        )
+        
+        if resp.status_code != 200:
+            return None, f"API Error {resp.status_code}"
+        
+        data = resp.json()
+        result_text = data["candidates"][0]["content"]["parts"][0]["text"].strip("` \n")
+        result = json.loads(result_text)
+        result["analysis_mode"] = "Gemini AI"
+        return result, None
+        
+    except Exception as e:
+        return None, f"API error: {str(e)}"    
