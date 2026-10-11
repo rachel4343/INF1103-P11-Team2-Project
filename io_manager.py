@@ -385,6 +385,14 @@ def collect_record_id(records: List[Dict]) -> Optional[str]:
         display_error("No report with that ID.")
 
 
+def collect_status_update(statuses) -> Dict:
+    return {"review_status": prompt_choice("New report status:", list(statuses))}
+
+
+def collect_priority_override(priorities) -> Dict:
+    return {"priority_override": prompt_choice("New priority:", list(priorities))}
+
+
 def collect_review_update(statuses, priorities) -> Dict:
     """IT/cybersecurity inputs. Anything skipped is left out of the result."""
     display_message("\nUpdate report (press Enter to skip any item)")
