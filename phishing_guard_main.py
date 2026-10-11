@@ -1,3 +1,8 @@
+import re
+import io_manager
+import data_manager
+import ai_manager
+import logic_manager
 import requests
 import json
 from typing import Dict, Optional, Tuple
@@ -6,16 +11,59 @@ from typing import Dict, Optional, Tuple
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 API_KEY = "AIzaSyD-Your-API-Key-Here"
 
+IT_PASSWORD = "123Api456"
 
-def call_gemini_api(subject: str, body: str, sender: str = ""):
-    prompt = f"""
-Analyze this email for phishing. Return ONLY valid JSON.
+def show_updated_menu() -> int:
+    """Show 4-option menu directly here — no touching friend's file!"""
+    io_manager.display_header("PHISHGUARD — Main Menu")
+    io_manager.display_message("  1. Submit Email Report       (Employee / User)")
+    io_manager.display_message("  2. IT Security Personnel    (View & Manage)")
+    io_manager.display_message("  3. Keyword Checker Tool")
+    io_manager.display_message("  4. Exit")
+    while True:
+        raw = input("\nChoose (1-4): ").strip()
+        if raw in ("1", "2", "3", "4"):
+            return int(raw)
+        io_manager.display_error("Please choose 1, 2, 3, or 4.")
+
+def check_it_password() -> bool:
+    print("\n" + "=" * 55)
+    print("        IT SECURITY — LOGIN REQUIRED")
+    print("=" * 55)
+    entered = input("  Enter password: ").strip()
+    
+    if entered == IT_PASSWORD:
+        print("  Access granted! Welcome, Security Team.")
+        return True
+    else:
+        print("   Incorrect password. Access denied.")
+        input("\nPress Enter to return to Main Menu...")
+        return False
+
+def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    """Try Gemini API first; return (None, error) if fails."""
+    
+    if "paste_your_key" in API_KEY:
+        return None, "API key not set"
+    
+    # Prepare text from report
+    viewed = report.get("viewed", True)
+    if not viewed:
+        subject = "NOT VIEWED"
+        body = f"Reason: {report.get('reason_for_suspicion', '')}"
+    else:
+        subject = str(report.get("subject") or "")
+        body = str(report.get("body") or "")
+
+    sender = f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
+    
+    prompt = f"""Analyze this email for phishing. Return ONLY valid JSON.
 
 SENDER: {sender}
 SUBJECT: {subject}
 BODY: {body}
 
-JSON format:
+Respond with:
 {{
   "threat_level": "low|medium|high|critical",
   "confidence": 0.0 to 1.0,
@@ -24,105 +72,103 @@ JSON format:
   "credential_request": true or false,
   "suspicious_link": true or false,
   "attachment_risk": true or false,
-  "attack_type": "credential harvesting|malware delivery|impersonation|suspicious spam|none",
+  "attack_type": "type or none",
   "explanation": "Brief reason"
-}}
-"""
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.1}
-    }
+}}"""
 
     try:
-        
-        response = requests.post(
+        resp = requests.post(
             f"{API_URL}?key={API_KEY}",
             headers={"Content-Type": "application/json"},
-            json=payload,
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.1}
+            },
             timeout=60
         )
-
-        if response.status_code == 200:
-            data = response.json()
-            try:
-                result_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                result_text = result_text.strip().strip("`").strip()
-                return json.loads(result_text), None
-            except Exception as e:
-                return None, f"Failed to parse result: {str(e)}"
-
-        if response.status_code == 401:
-            return None, " Key invalid — try new key from aistudio.google.com"
-        if response.status_code == 403:
-            return None, " Access denied"
-        if response.status_code == 404:
-            return None, " Model not found"
-        if response.status_code == 429:
-            return None, " Too many requests — wait 1 minute"
-        return None, f"API Error {response.status_code}"
-
-    except requests.exceptions.ReadTimeout:
-        return None, " Slow connection — Google took too long to reply. Try again."
-    except requests.exceptions.ConnectionError:
-        return None, " No internet connection — check your network"
+        
+        if resp.status_code != 200:
+            return None, f"API Error {resp.status_code}"
+        
+        data = resp.json()
+        result_text = data["candidates"][0]["content"]["parts"][0]["text"].strip("` \n")
+        result = json.loads(result_text)
+        result["analysis_mode"] = "Gemini AI"
+        return result, None
+        
     except Exception as e:
-        return None, f"Error: {str(e)}"
+        return None, f"API error: {str(e)}"  
 
-def analyze_email(report: Dict):
-    viewed = report.get("viewed", True)
+def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    """Try Gemini first; auto-switch to ai_manager if anything fails."""
+    
+    
+    result, err = call_gemini_analysis(report)
+    if result:
+        return result, None  
+    
+    
+    print(f"    {err} — using offline analysis")
+    result = ai_manager.analyze_email(report)
+    if result[0]:
+        result[0]["analysis_mode"] = "offline rules"
+    return result
 
-    if not viewed:
-        return call_gemini_api(
-            "NOT VIEWED",
-            f"Reason: {report.get('reason_not_viewed', '')}",
-            report.get("sender", "")
-        )
+def handle_submit():
+    report = io_manager.collect_report_input()
+    io_manager.display_message("\n  Analysing report...")
+    
+    ai_result, ai_error = smart_analyze(report)
+    
+    records = data_manager._load()
+    report_id = logic_manager.next_report_id(records)
+    record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
+    
+    data_manager.save_report(report, record)
+    
+    io_manager.display_assessment(record)
+    io_manager.display_message(f"\n  Saved successfully!")
 
-    body_text = report.get("body", "")
-    links = report.get("links", [])
-    if links:
-        body_text += f"\nLinks: {', '.join(links)}"
+def handle_it_panel():
 
-    result, error = call_gemini_api(
-        report.get("subject", ""),
-        body_text,
-        f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
-    )
-
-    if error:
-        return None, error
-
-    level = result.get("threat_level", "low")
-    if level in ("critical", "high"):
-        result["recommended_action"] = "Do NOT click links. Report to Security."
-    elif level == "medium":
-        result["recommended_action"] = "Verify sender through official contact."
+    if not check_it_password():
+        return
+    
+    io_manager.display_header("IT SECURITY — REPORT REVIEW")
+    records = data_manager._load()
+    if not records:
+        io_manager.display_message("  No reports submitted yet.")
     else:
-        result["recommended_action"] = "No immediate action."
+        sorted_records = logic_manager.sort_records_by_priority(records)
+        io_manager.display_record_list(sorted_records)
+    input("\nPress Enter to return to Main Menu...")
 
-    return result, None
+def handle_keyword_check():
+    text = io_manager.collect_keyword_text()
+    if not text:
+        io_manager.display_message("  Nothing entered.")
+        return
+    result = logic_manager.scan_keywords(text)
+    io_manager.display_keyword_results(result)
+
+def main():
+    try:
+        while True:
+            choice = show_updated_menu() 
+            
+            if choice == 1:
+                handle_submit()
+            elif choice == 2:
+                handle_it_panel()
+            elif choice == 3:
+                handle_keyword_check()
+            elif choice == 4:
+                io_manager.display_message("\nStay safe! Goodbye.")
+                break
+            else:
+                io_manager.display_message("  Invalid choice — try again.")
+    except (EOFError, KeyboardInterrupt):
+        io_manager.display_message("\nInput closed. Exiting.")
 
 if __name__ == "__main__":
-    print(" Connecting to Gemini API...")
-    print(" Please wait up to 60 seconds...\n")
-    
-    test_report = {
-        "viewed": True,
-        "sender_name": "IT Support",
-        "sender_email": "support@fake.com",
-        "subject": "URGENT: Verify Your Account",
-        "body": "Click here to enter your password immediately or your account will be locked.",
-        "links": ["http://fake-login.com"]
-    }
-    
-    result, error_msg = analyze_email(test_report)
-    
-    if error_msg:
-        print("nothing", error_msg)
-    else:
-        print(" SUCCESS! Connected to Gemini!")
-        print("-" * 40)
-        print("Threat Level  :", result.get("threat_level", "UNKNOWN").upper())
-        print("Confidence    :", f"{result.get('confidence', 0) * 100:.0f}%")
-        print("Attack Type   :", result.get("attack_type", "none"))
-        print("Explanation   :", result.get("explanation", "-"))
+    main()
