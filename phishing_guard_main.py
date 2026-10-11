@@ -68,4 +68,20 @@ Respond with:
         return result, None
         
     except Exception as e:
-        return None, f"API error: {str(e)}"    
+        return None, f"API error: {str(e)}"  
+
+def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    """Try Gemini first; auto-switch to ai_manager if anything fails."""
+    
+    
+    result, err = call_gemini_analysis(report)
+    if result:
+        return result, None  
+    
+    
+    print(f"    {err} — using offline analysis")
+    result = ai_manager.analyze_email(report)
+    if result[0]:
+        result[0]["analysis_mode"] = "offline rules"
+    return result
+  
