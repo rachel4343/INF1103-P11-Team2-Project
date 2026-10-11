@@ -1,3 +1,4 @@
+import os
 import re
 import io_manager
 import data_manager
@@ -10,8 +11,22 @@ from typing import Dict, Optional, Tuple
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 API_KEY = "AIzaSyD-Your-API-Key-Here"
-
 IT_PASSWORD = "123Api456"
+DATA_FILE = "phishguard_reports.json"
+
+def load_all_records():
+    if not os.path.exists(DATA_FILE):
+        return []
+    try:
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except:
+        return []
+
+def save_all_records(records):
+    with open(DATA_FILE, "w") as f:
+        json.dump(records, f, indent=2)
 
 def show_updated_menu() -> int:
     """Show 4-option menu directly here — no touching friend's file!"""
@@ -113,6 +128,26 @@ def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     if result[0]:
         result[0]["analysis_mode"] = "offline rules"
     return result
+
+def handle_submit():
+    report = io_manager.collect_report_input()
+    io_manager.display_message("\n  Analysing report...")
+    ai_result, ai_error = smart_analyze(report)
+    
+    records = load_all_records()
+    report_id = logic_manager.next_report_id(records)
+    record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
+    
+    # Default values for IT to fill
+    record["status"] = "Pending Review"
+    record["priority_override"] = None
+    record["investigation_notes"] = ""
+    record["assigned_reviewer"] = ""
+    
+    save_all_records(records + [record])
+    
+    io_manager.display_assessment(record)
+    io_manager.display_message(f"\n  Saved! Status: Pending Review")
 
 def handle_submit():
     report = io_manager.collect_report_input()
