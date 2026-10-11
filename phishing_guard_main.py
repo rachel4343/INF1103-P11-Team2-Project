@@ -11,6 +11,19 @@ from typing import Dict, Optional, Tuple
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 API_KEY = "AIzaSyD-Your-API-Key-Here"
 
+def show_updated_menu() -> int:
+    """Show 4-option menu directly here — no touching friend's file!"""
+    io_manager.display_header("PHISHGUARD — Main Menu")
+    io_manager.display_message("  1. Submit Email Report       (Employee / User)")
+    io_manager.display_message("  2. IT Security Personnel    (View & Manage)")
+    io_manager.display_message("  3. Keyword Checker Tool")
+    io_manager.display_message("  4. Exit")
+    while True:
+        raw = input("\nChoose (1-4): ").strip()
+        if raw in ("1", "2", "3", "4"):
+            return int(raw)
+        io_manager.display_error("Please choose 1, 2, 3, or 4.")
+
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     """Try Gemini API first; return (None, error) if fails."""
     
