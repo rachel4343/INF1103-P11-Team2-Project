@@ -3,6 +3,7 @@
 #  INF1103 Team Project
 # ==============================================
 
+import getpass
 import re
 from typing import Dict, List, Optional, Tuple
 
@@ -232,6 +233,51 @@ def collect_report_input() -> Dict:
 # ──────────────────────────────────────────────
 #  MENUS AND SELECTION
 # ──────────────────────────────────────────────
+role_employee = "employee"
+role_it = "it"
+
+# Menu Label
+employee_menu = (
+    "Submit Email Report",
+    "View Report History",
+    "Keyword Checker Tool",
+    "Exit",
+)
+it_menu = (
+    "Report Status Update",
+    "Priority Override",
+    "Investigation Notes",
+    "Exit",
+)
+menu_exit = "Exit"
+max_passcode_attempts = 3
+
+
+def prompt_menu_number(count: int) -> int:
+    """Ask for a menu number from 1 to count. Re-prompts until valid"""
+    while True:
+        raw = input(f"\nChoose (1-{count}): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= count:
+            return int(raw)
+        display_error(f"Please enter a number from 1 to {count}.")
+
+
+def show_login_menu() -> Optional[str]:
+    """Log in page. Returns role_employee, role_it or none if the user quits."""
+    display_header("PHISHGUARD - Log In")
+    display_message(" Who are you logging in as?")
+    display_message(" 1. Employee")
+    display_message(" 2. IT / Cybersecurity Personnel")
+    display_message(" 3. Quit")
+    choice = prompt_menu_number(3)
+    if choice == 1:
+        return role_employee
+    if choice == 2:
+        return role_it
+    return None
+
+
+
 def show_main_menu() -> int:
     display_header("PHISHGUARD — Main Menu")
     display_message("  1. Submit Email Report")
