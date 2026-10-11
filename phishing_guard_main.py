@@ -11,6 +11,8 @@ from typing import Dict, Optional, Tuple
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 API_KEY = "AIzaSyD-Your-API-Key-Here"
 
+IT_PASSWORD = "123Api456"
+
 def show_updated_menu() -> int:
     """Show 4-option menu directly here — no touching friend's file!"""
     io_manager.display_header("PHISHGUARD — Main Menu")
@@ -23,6 +25,20 @@ def show_updated_menu() -> int:
         if raw in ("1", "2", "3", "4"):
             return int(raw)
         io_manager.display_error("Please choose 1, 2, 3, or 4.")
+
+def check_it_password() -> bool:
+    print("\n" + "=" * 55)
+    print("        IT SECURITY — LOGIN REQUIRED")
+    print("=" * 55)
+    entered = input("  Enter password: ").strip()
+    
+    if entered == IT_PASSWORD:
+        print("  Access granted! Welcome, Security Team.")
+        return True
+    else:
+        print("   Incorrect password. Access denied.")
+        input("\nPress Enter to return to Main Menu...")
+        return False
 
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     """Try Gemini API first; return (None, error) if fails."""
@@ -114,6 +130,10 @@ def handle_submit():
     io_manager.display_message(f"\n  Saved successfully!")
 
 def handle_it_panel():
+
+    if not check_it_password():
+        return
+    
     io_manager.display_header("IT SECURITY — REPORT REVIEW")
     records = data_manager._load()
     if not records:
@@ -134,7 +154,7 @@ def handle_keyword_check():
 def main():
     try:
         while True:
-            choice = show_updated_menu()  # ✅ Use OUR 4-option menu
+            choice = show_updated_menu() 
             
             if choice == 1:
                 handle_submit()
