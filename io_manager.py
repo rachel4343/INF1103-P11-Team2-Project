@@ -250,11 +250,10 @@ it_menu = (
     "Exit",
 )
 menu_exit = "Exit"
-max_passcode_attempts = 3
+max_password_attempts = 3
 
 
 def prompt_menu_number(count: int) -> int:
-    """Ask for a menu number from 1 to count. Re-prompts until valid"""
     while True:
         raw = input(f"\nChoose (1-{count}): ").strip()
         if raw.isdigit() and 1 <= int(raw) <= count:
@@ -263,7 +262,6 @@ def prompt_menu_number(count: int) -> int:
 
 
 def show_login_menu() -> Optional[str]:
-    """Log in page. Returns role_employee, role_it or none if the user quits."""
     display_header("PHISHGUARD - Log In")
     display_message(" Who are you logging in as?")
     display_message(" 1. Employee")
@@ -276,6 +274,29 @@ def show_login_menu() -> Optional[str]:
         return role_it
     return None
 
+def show_role_menu(title: str, options: Tuple[str, ...]) -> str:
+    display_header(title)
+    for number, option in enumerate(options, start=1):
+        display_message(f"  {number}. {option}")
+    return options[prompt_menu_number(len(options)) - 1]
+
+def show_employee_menu() -> str:
+    return show_role_menu("PHISHGUARD - Employee Menu", employee_menu)
+
+def show_it_menu() -> str;
+    return show_role_menu("PHISHGUARD - IT / Cybersecurity Menu", it_menu)
+
+def prompt_it_password(verify: callable[[str], bool]) -> bool:
+    display_message("\n IT / Cybersecurity access requires a password.")
+    for attempt in range(1, max_password_attempts +1):
+        entered = getpass.getpass(" Password: ")
+        if verify(entered):
+            return True
+        left = max_password_attempts - attempt
+        if left:
+            display_error(f"Incorrect password. {left} attempt(s) left.")
+    display_error("Too many incorrect attempts. Returning to the log in page.")
+    return False
 
 
 def show_main_menu() -> int:
