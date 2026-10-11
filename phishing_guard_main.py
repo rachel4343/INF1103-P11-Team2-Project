@@ -95,8 +95,8 @@ def handle_submit(records):
     report_id = logic_manager.next_report_id(records)
     record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
     records.append(record)
-    data_manager.save_records(records)
-    io_manager.display_assessment(record)
+    data_manager.save_report(report, records)
+    io_manager.display_assessment(records)
     io_manager.display_message(f"\n  Saved. Total reports: {len(records)}")
 
 def handle_it_panel(records):
@@ -108,3 +108,32 @@ def handle_it_panel(records):
         io_manager.display_record_list(sorted_records)
     input("\nPress Enter to return to Main Menu...")
 
+def handle_keyword_check():
+    text = io_manager.collect_keyword_text()
+    if not text:
+        io_manager.display_message("  Nothing entered.")
+        return
+    result = logic_manager.scan_keywords(text)
+    io_manager.display_keyword_results(result)
+
+def main():
+    records = data_manager._load()
+    try:
+        while True:
+            choice = io_manager.show_main_menu()
+            if choice == 1:
+                handle_submit(records)
+            elif choice == 2:
+                handle_it_panel(records)
+            elif choice == 3:
+                handle_keyword_check()
+            elif choice == 4:
+                io_manager.display_message("\nStay safe! Goodbye.")
+                break
+            else:
+                io_manager.display_message("  Invalid choice — try again.")
+    except (EOFError, KeyboardInterrupt):
+        io_manager.display_message("\nInput closed. Exiting.")
+
+if __name__ == "__main__":
+    main()
