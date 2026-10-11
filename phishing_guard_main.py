@@ -84,4 +84,18 @@ def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     if result[0]:
         result[0]["analysis_mode"] = "offline rules"
     return result
-  
+
+def handle_submit(records):
+    report = io_manager.collect_report_input()
+    io_manager.display_message("\n  Analysing report...")
+    
+    # Use smart analysis — Gemini or fallback
+    ai_result, ai_error = smart_analyze(report)
+    
+    report_id = logic_manager.next_report_id(records)
+    record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
+    records.append(record)
+    data_manager.save_records(records)
+    io_manager.display_assessment(record)
+    io_manager.display_message(f"\n  Saved. Total reports: {len(records)}")
+
