@@ -5,7 +5,7 @@ from typing import Dict
 
 DATA_FILE = "phishguard_reports.json"
 
-def _load():
+def load_records():
     """Read saved reports; keep an unreadable file as a backup instead of wiping it."""
     if not os.path.exists(DATA_FILE):
         return []
@@ -24,7 +24,7 @@ def _load():
         pass
     return []
 
-def _write(records):
+def save_records(records):
     """Write to a temp file, then swap it in so a crash can't leave a half-written file."""
     tmp = DATA_FILE + ".tmp"
     with open(tmp, "w") as f:
@@ -40,7 +40,7 @@ def _scam_text(report: Dict) -> str:
 
 def save_report(report: Dict, decision: Dict):
     """Save a report to the JSON file, skipping duplicates and flagging repeat scams."""
-    records = _load()
+    records = load_records()
  
     for r in records:
         if r.get("report") == report:
@@ -59,7 +59,7 @@ def save_report(report: Dict, decision: Dict):
         "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "same_scam_before": same_scam
     })
-    _write(records)
+    save_records(records)
  
     print(f"\n Saved! Total reports: {len(records)}")
     print(f"   File: {DATA_FILE}")
