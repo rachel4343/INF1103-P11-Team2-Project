@@ -247,6 +247,14 @@ def handle_it_panel():
         
         input("\nPress Enter to continue...")
 
+def handle_keyword_check():
+    text = io_manager.collect_keyword_text()
+    if not text:
+        io_manager.display_message("  Nothing entered.")
+        return
+    result = logic_manager.scan_keywords(text)
+    io_manager.display_keyword_results(result)
+
 def handle_submit():
     report = io_manager.collect_report_input()
     io_manager.display_message("\n  Analysing report...")
