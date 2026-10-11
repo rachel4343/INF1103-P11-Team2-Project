@@ -98,22 +98,24 @@ def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         result[0]["analysis_mode"] = "offline rules"
     return result
 
-def handle_submit(records):
+def handle_submit():
     report = io_manager.collect_report_input()
     io_manager.display_message("\n  Analysing report...")
     
-    # Use smart analysis — Gemini or fallback
     ai_result, ai_error = smart_analyze(report)
     
+    records = data_manager._load()
     report_id = logic_manager.next_report_id(records)
     record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
-    records.append(record)
-    data_manager.save_report(report, records)
-    io_manager.display_assessment(records)
-    io_manager.display_message(f"\n  Saved. Total reports: {len(records)}")
+    
+    data_manager.save_report(report, record)
+    
+    io_manager.display_assessment(record)
+    io_manager.display_message(f"\n  Saved successfully!")
 
-def handle_it_panel(records):
+def handle_it_panel():
     io_manager.display_header("IT SECURITY — REPORT REVIEW")
+    records = data_manager._load()
     if not records:
         io_manager.display_message("  No reports submitted yet.")
     else:
@@ -130,14 +132,14 @@ def handle_keyword_check():
     io_manager.display_keyword_results(result)
 
 def main():
-    records = data_manager._load()
     try:
         while True:
-            choice = io_manager.show_main_menu()
+            choice = show_updated_menu()  # ✅ Use OUR 4-option menu
+            
             if choice == 1:
-                handle_submit(records)
+                handle_submit()
             elif choice == 2:
-                handle_it_panel(records)
+                handle_it_panel()
             elif choice == 3:
                 handle_keyword_check()
             elif choice == 4:
