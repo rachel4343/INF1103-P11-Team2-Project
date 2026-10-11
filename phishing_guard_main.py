@@ -149,6 +149,104 @@ def handle_submit():
     io_manager.display_assessment(record)
     io_manager.display_message(f"\n  Saved! Status: Pending Review")
 
+def handle_it_panel():
+    if not check_it_password():
+        return
+    
+    while True:
+        io_manager.display_header("IT SECURITY — REPORT REVIEW")
+        records = load_all_records()
+        
+        if not records:
+            print("  No reports submitted yet.\n")
+            input("Press Enter to return...")
+            return
+        
+        # Show summary list
+        print(f"  {'ID':<5} {'Threat Level':<15} {'Status':<18} {'Assignee':<15}")
+        print("  " + "-" * 65)
+        for rec in records:
+            level = rec.get("threat_level", "unknown").upper()
+            status = rec.get("status", "Pending Review")
+            assignee = rec.get("assigned_reviewer", "(unassigned)")
+            print(f"  #{rec['report_id']:<3} {level:<15} {status:<18} {assignee:<15}")
+        
+        print("\n  Enter ID to update → 'q' to go back")
+        choice = input("  Your choice: ").strip()
+        
+        if choice.lower() == "q":
+            break
+        
+        # Find report
+        found = None
+        for rec in records:
+            if str(rec["report_id"]) == choice:
+                found = rec
+                break
+        
+        if not found:
+            print(f"\n   Report #{choice} not found.")
+            input("Press Enter to continue...")
+            continue
+        
+        # Show full details
+        print("\n" + "=" * 65)
+        print(f"  REPORT #{found['report_id']} — FULL DETAILS")
+        print("=" * 65)
+        print(f"  Threat Level:     {found.get('threat_level', 'N/A')}")
+        print(f"  Current Status:   {found.get('status', 'Pending Review')}")
+        print(f"  Priority Override:{found.get('priority_override', '(system default)')}")
+        print(f"  Assigned Reviewer:{found.get('assigned_reviewer', '(unassigned)')}")
+        print(f"  Investigation Notes:")
+        note = found.get("investigation_notes", "")
+        print(f"    {note if note else '(no notes yet)'}")
+        print("=" * 65)
+        print("  UPDATE OPTIONS:")
+        print("  1. Update Report Status")
+        print("  2. Override Priority Level")
+        print("  3. Add/Edit Investigation Notes")
+        print("  4. Assign Reviewer")
+        print("  5. Save & Return to List")
+        
+        while True:
+            action = input("\n  Choose action (1-5): ").strip()
+            
+            if action == "1":
+                print("\n  Status options: Pending Review · In Progress · Approved / Handled · Dismissed")
+                new_status = input("  Enter new status: ").strip()
+                found["status"] = new_status
+                print(f"   Status updated to: {new_status}")
+            
+            elif action == "2":
+                print("\n  Priority options: low · medium · high · critical")
+                new_prio = input("  Enter overridden priority: ").strip()
+                found["priority_override"] = new_prio
+                print(f"   Priority set to: {new_prio}")
+            
+            elif action == "3":
+                print("\n  Enter your findings / actions taken:")
+                new_note = input("  Notes: ").strip()
+                found["investigation_notes"] = new_note
+                print("   Notes saved")
+            
+            elif action == "4":
+                name = input("\n  Enter reviewer name: ").strip()
+                found["assigned_reviewer"] = name
+                print(f"   Assigned to: {name}")
+            
+            elif action == "5":
+                # Save everything to JSON file
+                idx = records.index(found)
+                records[idx] = found
+                save_all_records(records)
+                print("\n  All changes saved to file!")
+                break
+            
+            else:
+                print("   Invalid choice — try again")
+        
+        input("\nPress Enter to continue...")
+
 def handle_submit():
     report = io_manager.collect_report_input()
     io_manager.display_message("\n  Analysing report...")
