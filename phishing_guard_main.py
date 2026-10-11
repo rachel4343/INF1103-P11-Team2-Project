@@ -99,3 +99,12 @@ def handle_submit(records):
     io_manager.display_assessment(record)
     io_manager.display_message(f"\n  Saved. Total reports: {len(records)}")
 
+def handle_it_panel(records):
+    io_manager.display_header("IT SECURITY — REPORT REVIEW")
+    if not records:
+        io_manager.display_message("  No reports submitted yet.")
+    else:
+        sorted_records = logic_manager.sort_records_by_priority(records)
+        io_manager.display_record_list(sorted_records)
+    input("\nPress Enter to return to Main Menu...")
+
