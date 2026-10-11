@@ -101,3 +101,28 @@ def analyze_email(report: Dict):
         result["recommended_action"] = "No immediate action."
 
     return result, None
+
+if __name__ == "__main__":
+    print(" Connecting to Gemini API...")
+    print(" Please wait up to 60 seconds...\n")
+    
+    test_report = {
+        "viewed": True,
+        "sender_name": "IT Support",
+        "sender_email": "support@fake.com",
+        "subject": "URGENT: Verify Your Account",
+        "body": "Click here to enter your password immediately or your account will be locked.",
+        "links": ["http://fake-login.com"]
+    }
+    
+    result, error_msg = analyze_email(test_report)
+    
+    if error_msg:
+        print("nothing", error_msg)
+    else:
+        print(" SUCCESS! Connected to Gemini!")
+        print("-" * 40)
+        print("Threat Level  :", result.get("threat_level", "UNKNOWN").upper())
+        print("Confidence    :", f"{result.get('confidence', 0) * 100:.0f}%")
+        print("Attack Type   :", result.get("attack_type", "none"))
+        print("Explanation   :", result.get("explanation", "-"))
