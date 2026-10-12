@@ -515,7 +515,12 @@ def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Option
         "rules_triggered": decision["rules_triggered"],
         "keyword_scan": decision["keyword_scan"],
         "review_status": "Pending Review",
+        "review_stage": "first_review",
+        "first_reviewed_by": "",
+        "first_review_decision": "",
+        "final_review_decision": "",
         "assigned_reviewer": "",
+        "review_history": [],
         "investigation_notes": [],
     }
 
@@ -524,17 +529,20 @@ def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Option
 #  6. IT / CYBERSECURITY REVIEW UPDATES
 # ──────────────────────────────────────────────
 def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
-    """Apply status / priority override / note / reviewer changes.
+    """Apply a two-person review decision or a legacy manual status update.
 
     Returns (updated_copy, errors). If there are any errors the ORIGINAL
     record is returned unchanged so nothing is half-applied.
     """
     errors = []
+    action = updates.get("review_action")
     status = updates.get("review_status")
     override = updates.get("priority_override")
     note = str(updates.get("note") or "").strip()
     reviewer = str(updates.get("assigned_reviewer") or "").strip()
 
+    if action not in (None, "first", "second"):
+        errors.append("Invalid review action.")
     if status is not None and status not in REVIEW_STATUSES:
         errors.append(f"Invalid review status: {status}")
     if override is not None and override not in PRIORITIES:
@@ -543,18 +551,78 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
         errors.append(f"Note is too long (max {MAX_NOTE_LENGTH} characters)")
     if len(reviewer) > MAX_REVIEWER_LENGTH:
         errors.append(f"Reviewer name is too long (max {MAX_REVIEWER_LENGTH} characters)")
+
+    if action == "first":
+        first_reviewer = str(updates.get("reviewer") or "").strip()
+        next_reviewer = reviewer
+        decision = updates.get("initial_decision")
+        if not first_reviewer or len(first_reviewer) > MAX_REVIEWER_LENGTH:
+            errors.append("Enter a reviewer name (max 60 characters).")
+        if not next_reviewer:
+            errors.append("Assign the report to the next reviewer.")
+        if decision not in ("High", "Low"):
+            errors.append("First review must be classified as High or Low.")
+        if first_reviewer and next_reviewer and first_reviewer.casefold() == next_reviewer.casefold():
+            errors.append("The next reviewer must be a different person.")
+    elif action == "second":
+        second_reviewer = str(updates.get("reviewer") or "").strip()
+        assigned_reviewer = str(record.get("assigned_reviewer") or "").strip()
+        decision = updates.get("approval_decision")
+        if record.get("review_stage", "first_review") != "awaiting_second_review":
+            errors.append("This report is not waiting for a second-person review.")
+        if not second_reviewer or len(second_reviewer) > MAX_REVIEWER_LENGTH:
+            errors.append("Enter a reviewer name (max 60 characters).")
+        elif second_reviewer.casefold() != assigned_reviewer.casefold():
+            errors.append("Only the assigned reviewer can approve or reject this review.")
+        if decision not in ("approve", "reject"):
+            errors.append("Choose approve or reject.")
+
     if errors:
         return record, errors
 
     updated = copy.deepcopy(record)
-    if status is not None:
+    if action == "first":
+        first_reviewer = str(updates["reviewer"]).strip()
+        updated["review_stage"] = "awaiting_second_review"
+        updated["review_status"] = "Under Investigation"
+        updated["first_reviewed_by"] = first_reviewer
+        updated["first_review_decision"] = updates["initial_decision"]
+        updated["final_review_decision"] = ""
+        updated["assigned_reviewer"] = reviewer
+        updated.setdefault("review_history", []).append({
+            "stage": "first",
+            "reviewer": first_reviewer,
+            "decision": updates["initial_decision"],
+            "assigned_reviewer": reviewer,
+        })
+    elif action == "second":
+        second_reviewer = str(updates["reviewer"]).strip()
+        decision = updates["approval_decision"]
+        updated["review_history"] = updated.get("review_history", [])
+        updated["review_history"].append({
+            "stage": "second",
+            "reviewer": second_reviewer,
+            "decision": decision.title(),
+        })
+        if decision == "approve":
+            updated["review_stage"] = "closed"
+            updated["review_status"] = "Resolved"
+            updated["final_review_decision"] = "Approved"
+        else:
+            updated["review_stage"] = "first_review"
+            updated["review_status"] = "Pending Review"
+            updated["first_reviewed_by"] = ""
+            updated["first_review_decision"] = ""
+            updated["final_review_decision"] = "Rejected"
+            updated["assigned_reviewer"] = ""
+    elif status is not None:
         updated["review_status"] = status
-    if override is not None:
+    if action is None and override is not None:
         updated["priority"] = override
         updated["priority_overridden"] = override != updated.get("system_priority")
     if note:
         updated.setdefault("investigation_notes", []).append(note)
-    if reviewer:
+    if action is None and reviewer:
         updated["assigned_reviewer"] = reviewer
     return updated, []
 
