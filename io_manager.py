@@ -220,7 +220,7 @@ def collect_report_input() -> Dict:
         display_message("  Privacy protected: sensitive details in the message were hidden.")
 
     # The reported sender is the attacker's address, not the employee's personal data
-    # so it is kept as-is for spoofing analysis.
+    # thus it is kept as-is for spoofing analysis.
     return {
         "viewed": True,
         "sender_email": sender_email,

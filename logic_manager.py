@@ -374,7 +374,7 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
 
     # Rule 3: high severity backed by impersonation + urgency, or by 3+ warning signs
     # Confidence is not required here because multiple warning signs
-    # provide independent evidence of risk.
+    # provide independent evidence of risks.
     if level == "high":
         if ai["impersonation"] and ai["urgency_manipulation"]:
             matched.append((PRIORITY_HIGH,
