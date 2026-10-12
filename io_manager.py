@@ -298,17 +298,30 @@ def prompt_it_password(verify: callable[[str], bool]) -> bool:
     display_error("Too many incorrect attempts. Returning to the log in page.")
     return False
 
+def run_main_menu(handlers: Dict[str, Dict[str, callable[[], None]]],
+                verify_password: callable[[str], bool]) -> None:
 
-def show_main_menu() -> int:
-    display_header("PHISHGUARD — Main Menu")
-    display_message("  1. Submit Email Report")
-    display_message("  2. Keyword Checker Tool")
-    display_message("  3. Exit")
+    menus = {role_employee: show_employee_menu, role_it: show_it_menu}
+
     while True:
-        raw = input("\nChoose (1-3): ").strip()
-        if raw in ("1", "2", "3"):
-            return int(raw)
-        display_error("Please choose 1, 2 or 3.")
+        role = show_login_menu()
+        if role is None:
+            display_message("\nStay safe!")
+            return
+        if role == role_it and not prompt_it_password(verify_password):
+            continue
+        break
+
+    while True:
+        choice = menus[role]()
+        if choice == menu_exit:
+            display_message("\nStay safe!")
+            return
+        action = handlers.get(role, {}).get(choice)
+        if action is None:
+            display_error(f"'{choice}' is not available yet.")
+            continue
+        action()
 
 
 KEYWORD_LABELS = {
@@ -370,6 +383,14 @@ def collect_record_id(records: List[Dict]) -> Optional[str]:
         if raw.upper() in known:
             return raw
         display_error("No report with that ID.")
+
+
+def collect_status_update(statuses) -> Dict:
+    return {"review_status": prompt_choice("New report status:", list(statuses))}
+
+
+def collect_priority_override(priorities) -> Dict:
+    return {"priority_override": prompt_choice("New priority:", list(priorities))}
 
 
 def collect_review_update(statuses, priorities) -> Dict:

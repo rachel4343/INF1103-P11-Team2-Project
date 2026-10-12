@@ -19,6 +19,9 @@
 # ==============================================
 
 import copy
+import hashlib
+import hmac
+import os
 import re
 from typing import Dict, List, Optional, Tuple
 
@@ -147,6 +150,27 @@ KEYWORD_LEVELS = ((6, "critical"), (4, "high"), (2, "medium"), (1, "low"))
 # so keywords alone can never create a Critical or Urgent report.
 KEYWORD_ESCALATION_LEVELS = ("high", "critical")
 
+# ──────────────────────────────────────────────
+# IT / Cybersecurity Password
+# ──────────────────────────────────────────────
+# Only a salted hash is stored here, never the passcode itself.
+# The default passcode is "PhishGuard#2026": CHANGE IT before real use, either:
+#   * run `python logic_manager.py` and paste the new hash into IT_PASSCODE_HASH, or
+#   * set the PHISHGUARD_IT_PASSCODE environment variable (takes priority).
+it_password_salt = "phishguard-it-salt"
+it_password_iterations = 200_000
+it_password_hash = "ccc2851ae88e1b4f09e719824fb3d1bd3f6e27e63ba9e213bf628d8aef1d0519"
+
+def hash_passcode(password: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"),
+        it_password_salt.encode("utf-8"), it_password_iterations,
+    ).hex()
+
+def verify_it_password(entered: str) -> bool:
+    override = os.environ.get("phishguard_it_password")
+    expected = hash_passcode(override) if override else it_password_hash
+    return hmac.compare_digest(hash_passcode(entered or ""), expected)
 
 # ──────────────────────────────────────────────
 #  2. CAN THE RULES RUN? (not full schema validation: that is the AI Manager's job)
