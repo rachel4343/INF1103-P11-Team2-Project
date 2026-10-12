@@ -402,10 +402,15 @@ def collect_priority_override(priorities) -> Dict:
 
 
 def collect_review_update(record: Dict) -> Dict:
-    """Collect either the first assessment or the assigned reviewer's decision."""
+    """Collect the first review status or the assigned reviewer's approval."""
     if record.get("review_stage", "first_review") == "awaiting_second_review":
         assigned_reviewer = str(record.get("assigned_reviewer") or "")
         display_message("\nSecond-person review")
+        display_message(
+            f"  Workflow status: {record.get('review_status', 'Pending Review')}"
+        )
+        display_message(f"  Outcome: {record.get('report_outcome', 'Not recorded')}")
+        display_message(f"  Risk level: {record.get('risk_level', 'Not recorded')}")
         reviewer = prompt_text(
             f"Your name (assigned reviewer: {assigned_reviewer})",
             max_length=60,
@@ -413,17 +418,23 @@ def collect_review_update(record: Dict) -> Dict:
         decision = prompt_choice(
             "Approve the first review or reject it?", ["Approve", "Reject"]
         )
-        note = prompt_text("Review note (optional)", required=False, max_length=1000)
+        rejection_reason = ""
+        if decision == "Reject":
+            display_message("Explain why you are rejecting this review.")
+            rejection_reason = prompt_multiline("Rejection reason")
         return {
             "review_action": "second",
             "reviewer": reviewer,
             "approval_decision": decision.lower(),
-            "note": note,
+            "rejection_reason": rejection_reason,
         }
 
     display_message("\nFirst-person review")
     reviewer = prompt_text("Your name", max_length=60)
-    decision = prompt_choice("Classify this report:", ["High", "Low"])
+    report_outcome = prompt_choice(
+        "Investigation outcome:", ["Resolved (real scam)", "False Positive (not a scam)"]
+    )
+    risk_level = prompt_choice("Risk level:", ["Low", "High"])
     assigned_reviewer = prompt_text("Assign to the next reviewer", max_length=60)
     while assigned_reviewer.casefold() == reviewer.casefold():
         display_error("Assign this report to a different reviewer.")
@@ -432,7 +443,8 @@ def collect_review_update(record: Dict) -> Dict:
     return {
         "review_action": "first",
         "reviewer": reviewer,
-        "initial_decision": decision,
+        "report_outcome": report_outcome,
+        "risk_level": risk_level,
         "assigned_reviewer": assigned_reviewer,
         "note": note,
     }
@@ -488,6 +500,9 @@ def display_record_list(records: List[Dict]) -> None:
             display_message(
                 f"       Assigned reviewer: {truncate(r['assigned_reviewer'], 40)}"
             )
+        stage = r.get("review_stage", "first_review")
+        if stage == "awaiting_second_review":
+            display_message("       Waiting for second-person approval")
 
 
 def display_record_detail(record: Dict) -> None:
@@ -529,21 +544,25 @@ def display_record_detail(record: Dict) -> None:
     display_message(f"  Priority           : {record.get('priority')}{overridden}")
     display_message(f"  Status             : {record.get('review_status')}")
     display_message(f"  Review stage       : {record.get('review_stage', 'first_review')}")
-    if record.get("first_review_decision"):
-        display_message(f"  First decision     : {record['first_review_decision']}")
+    if record.get("report_outcome"):
+        display_message(f"  Investigation result: {record['report_outcome']}")
+    if record.get("risk_level"):
+        display_message(f"  Reviewed risk      : {record['risk_level']}")
     if record.get("final_review_decision"):
         display_message(f"  Last second review : {record['final_review_decision']}")
     display_message(f"  Assigned reviewer  : {record.get('assigned_reviewer') or 'unassigned'}")
     for entry in record.get("review_history", []):
         if entry.get("stage") == "first":
             display_message(
-                f"    First: {entry.get('decision')} by {entry.get('reviewer')}; "
+                f"    First: {entry.get('outcome')} / {entry.get('risk_level')} by {entry.get('reviewer')}; "
                 f"assigned to {entry.get('assigned_reviewer')}"
             )
         else:
             display_message(
                 f"    Second: {entry.get('decision')} by {entry.get('reviewer')}"
             )
+            if entry.get("rejection_reason"):
+                display_message(f"      Rejection reason: {entry['rejection_reason']}")
     notes = record.get("investigation_notes", [])
     display_message(f"  Investigation notes: {len(notes)}")
     for number, note in enumerate(notes, start=1):
