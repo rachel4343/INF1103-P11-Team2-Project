@@ -25,7 +25,7 @@ API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 def ask_for_api_key() -> None:
-    """Ask for the Gemini key at th startup. Typing is hidden and the key is kept
+    """Ask for the Gemini key at startup. Typing is hidden and the key is kept
     in memory only: it is never written to a file or to the report JSON."""
     global API_KEY
     if API_KEY:
@@ -216,6 +216,7 @@ def handle_keyword_check():
 
 
 def main():
+    ask_for_api_key()
     try:
         while True:
             choice = show_updated_menu() 
