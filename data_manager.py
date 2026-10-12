@@ -1,3 +1,8 @@
+# ==============================================
+#  PHISHGUARD — Data Manager
+#  INF1103 Team Project
+# ==============================================
+
 import json
 import os
 import time
