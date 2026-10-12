@@ -31,13 +31,13 @@ def ask_for_api_key() -> None:
     if API_KEY:
         io_manager.display_message("Gemini API key found. AI analysis is ON.")
         return
-    io_manager.display_message(" \n Gemini API key (get one free at aistudio.google.com/apikey)")
-    entered = getpass.getpass(" Paste key (Enter to skip, offline mode)").strip()
+    io_manager.display_message("\nGemini API key (get one free at aistudio.google.com/apikey)")
+    entered = getpass.getpass("Paste key (Enter to skip, offline mode)").strip()
     if entered:
         API_KEY = entered
-        io_manager.display_message("AI analysis is ON.")
+        io_manager.display_message("\nAI analysis is ON.")
     else:
-        io_manager.display_message(" No key entered. Using offline analysis.")
+        io_manager.display_message("\nNo key entered. Using offline analysis.")
 
 # ──────────────────────────────────────────────
 #  MENU
@@ -47,8 +47,8 @@ def ask_for_api_key() -> None:
 def show_updated_menu() -> int:
     """Show 4-option menu directly here — no touching friend's file!"""
     io_manager.display_header("PHISHGUARD — Main Menu")
-    io_manager.display_message("  1. Submit Email Report       (Employee / User)")
-    io_manager.display_message("  2. IT Security Personnel    (View & Manage)")
+    io_manager.display_message("  1. Submit Email Report (Employee / User)")
+    io_manager.display_message("  2. IT Security Personnel (View & Manage)")
     io_manager.display_message("  3. Keyword Checker Tool")
     io_manager.display_message("  4. Exit")
     return io_manager.prompt_menu_number(4)
