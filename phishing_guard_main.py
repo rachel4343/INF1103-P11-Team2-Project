@@ -255,42 +255,7 @@ def handle_keyword_check():
     result = logic_manager.scan_keywords(text)
     io_manager.display_keyword_results(result)
 
-def handle_submit():
-    report = io_manager.collect_report_input()
-    io_manager.display_message("\n  Analysing report...")
-    
-    ai_result, ai_error = smart_analyze(report)
-    
-    records = data_manager._load()
-    report_id = logic_manager.next_report_id(records)
-    record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
-    
-    data_manager.save_report(report, record)
-    
-    io_manager.display_assessment(record)
-    io_manager.display_message(f"\n  Saved successfully!")
 
-def handle_it_panel():
-
-    if not check_it_password():
-        return
-    
-    io_manager.display_header("IT SECURITY — REPORT REVIEW")
-    records = data_manager._load()
-    if not records:
-        io_manager.display_message("  No reports submitted yet.")
-    else:
-        sorted_records = logic_manager.sort_records_by_priority(records)
-        io_manager.display_record_list(sorted_records)
-    input("\nPress Enter to return to Main Menu...")
-
-def handle_keyword_check():
-    text = io_manager.collect_keyword_text()
-    if not text:
-        io_manager.display_message("  Nothing entered.")
-        return
-    result = logic_manager.scan_keywords(text)
-    io_manager.display_keyword_results(result)
 
 def main():
     try:
