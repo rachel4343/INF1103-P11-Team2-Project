@@ -61,6 +61,100 @@ def handle_submit():
     io_manager.display_assessment(record)
     io_manager.display_message(f"\n  Saved! Status: Pending Review")
 
+def handle_it_panel():
+    if not check_it_password():
+        return
+    
+    while True:
+        io_manager.display_header("IT SECURITY — REPORT REVIEW")
+        records = data_manager.load_records()
+        
+        if not records:
+            print("  No reports submitted yet.\n")
+            input("Press Enter to return...")
+            return
+        
+        print(f"  {'ID':<10} {'Threat Level':<15} {'Status':<20} {'Assignee':<15}")
+        print("  " + "-" * 65)
+        for rec in records:
+            level = rec.get("threat_level", "unknown").upper()
+            status = rec.get("review_status", "Pending Review")
+            assignee = rec.get("assigned_reviewer", "(unassigned)")
+            print(f"  {rec['report_id']:<10} {level:<15} {status:<20} {assignee:<15}")
+        
+        print("\n  Enter ID to update → 'q' to go back")
+        choice = input("  Your choice: ").strip()
+        
+        if choice.lower() == "q":
+            break
+        
+        found = None
+        for rec in records:
+            if str(rec["report_id"]) == choice:
+                found = rec
+                break
+        
+        if not found:
+            print(f"\n  Report #{choice} not found.")
+            input("Press Enter to continue...")
+            continue
+        
+        print("\n" + "=" * 65)
+        print(f"  REPORT #{found['report_id']} — FULL DETAILS")
+        print("=" * 65)
+        print(f"  Threat Level:     {found.get('threat_level', 'N/A')}")
+        print(f"  Current Status:   {found.get('review_status', 'Pending Review')}")
+        print(f"  Priority:         {found.get('priority', 'N/A')}")
+        print(f"  Assigned Reviewer:{found.get('assigned_reviewer', '(unassigned)')}")
+        notes = found.get("investigation_notes", [])
+        print(f"  Investigation Notes:")
+        if notes:
+            for n in notes:
+                print(f"    - {n}")
+        else:
+            print("    (no notes yet)")
+        print("=" * 65)
+        print("  UPDATE OPTIONS:")
+        print("  1. Update Status")
+        print("  2. Override Priority")
+        print("  3. Add Note")
+        print("  4. Assign Reviewer")
+        print("  5. Save & Return")
+        
+        while True:
+            action = input("\n  Choose action (1-5): ").strip()
+            
+            if action == "1":
+                new_status = input("  New status: ").strip()
+                found["review_status"] = new_status
+                print(f"  Status → {new_status}")
+            
+            elif action == "2":
+                new_prio = input("  New priority: ").strip()
+                found["priority"] = new_prio
+                found["priority_overridden"] = True
+                print(f"  Priority → {new_prio}")
+            
+            elif action == "3":
+                new_note = input("  Enter note: ").strip()
+                found.setdefault("investigation_notes", []).append(new_note)
+                print("  Note added")
+            
+            elif action == "4":
+                name = input("  Reviewer name: ").strip()
+                found["assigned_reviewer"] = name
+                print(f"  Assigned to: {name}")
+            
+            elif action == "5":
+                data_manager.save_records(records)
+                print("  Saved!\n")
+                break
+            
+            else:
+                print("  Invalid choice")
+        
+        input("Press Enter to continue...")
+
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     prompt = f"""Analyze this email..."""
     """Try Gemini API first; return (None, error) if fails."""
