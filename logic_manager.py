@@ -25,7 +25,7 @@ from typing import Dict, List, Optional, Tuple
 #  1. CONSTANTS — every number and label lives here
 # ──────────────────────────────────────────────
 THREAT_LEVELS = ("low", "medium", "high", "critical")
-REVIEW_STATUSES = ("Pending Review", "Under Investigation", "Resolved", "False Positive")
+REVIEW_STATUSES = ("Pending Review", "Under Investigation", "Resolved", "False Positive", "Done")
 
 PRIORITY_CRITICAL = "Critical"
 PRIORITY_URGENT = "Urgent Security Review"
@@ -115,6 +115,7 @@ INDICATOR_POINTS = {
 
 MAX_NOTE_LENGTH = 1000
 MAX_REVIEWER_LENGTH = 60
+MAX_REJECTION_REASON_LENGTH = 5000
 
 # ── Keyword Checker (menu option 2) and keyword safety net ──
 # Our own word database. Add/remove words here anytime.
@@ -515,7 +516,8 @@ def build_final_record(report_id: str, report: Dict, ai_result, ai_error: Option
         "review_status": "Pending Review",
         "review_stage": "first_review",
         "first_reviewed_by": "",
-        "first_review_decision": "",
+        "report_outcome": "",
+        "risk_level": "",
         "final_review_decision": "",
         "assigned_reviewer": "",
         "review_history": [],
@@ -538,6 +540,7 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
     override = updates.get("priority_override")
     note = str(updates.get("note") or "").strip()
     reviewer = str(updates.get("assigned_reviewer") or "").strip()
+    rejection_reason = str(updates.get("rejection_reason") or "").strip()
 
     if action not in (None, "first", "second"):
         errors.append("Invalid review action.")
@@ -549,17 +552,24 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
         errors.append(f"Note is too long (max {MAX_NOTE_LENGTH} characters)")
     if len(reviewer) > MAX_REVIEWER_LENGTH:
         errors.append(f"Reviewer name is too long (max {MAX_REVIEWER_LENGTH} characters)")
+    if len(rejection_reason) > MAX_REJECTION_REASON_LENGTH:
+        errors.append(
+            f"Rejection reason is too long (max {MAX_REJECTION_REASON_LENGTH} characters)"
+        )
 
     if action == "first":
         first_reviewer = str(updates.get("reviewer") or "").strip()
         next_reviewer = reviewer
-        decision = updates.get("initial_decision")
+        outcome = updates.get("report_outcome")
+        risk_level = updates.get("risk_level")
         if not first_reviewer or len(first_reviewer) > MAX_REVIEWER_LENGTH:
             errors.append("Enter a reviewer name (max 60 characters).")
         if not next_reviewer:
             errors.append("Assign the report to the next reviewer.")
-        if decision not in ("High", "Low"):
-            errors.append("First review must be classified as High or Low.")
+        if outcome not in ("Resolved (real scam)", "False Positive (not a scam)"):
+            errors.append("Choose Resolved or False Positive as the investigation outcome.")
+        if risk_level not in ("Low", "High"):
+            errors.append("Choose Low or High as the risk level.")
         if first_reviewer and next_reviewer and first_reviewer.casefold() == next_reviewer.casefold():
             errors.append("The next reviewer must be a different person.")
     elif action == "second":
@@ -574,6 +584,8 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
             errors.append("Only the assigned reviewer can approve or reject this review.")
         if decision not in ("approve", "reject"):
             errors.append("Choose approve or reject.")
+        if decision == "reject" and not rejection_reason:
+            errors.append("A rejection reason is required.")
 
     if errors:
         return record, errors
@@ -582,15 +594,17 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
     if action == "first":
         first_reviewer = str(updates["reviewer"]).strip()
         updated["review_stage"] = "awaiting_second_review"
-        updated["review_status"] = "Under Investigation"
+        updated["review_status"] = "Pending Review"
         updated["first_reviewed_by"] = first_reviewer
-        updated["first_review_decision"] = updates["initial_decision"]
+        updated["report_outcome"] = updates["report_outcome"]
+        updated["risk_level"] = updates["risk_level"]
         updated["final_review_decision"] = ""
         updated["assigned_reviewer"] = reviewer
         updated.setdefault("review_history", []).append({
             "stage": "first",
             "reviewer": first_reviewer,
-            "decision": updates["initial_decision"],
+            "outcome": updates["report_outcome"],
+            "risk_level": updates["risk_level"],
             "assigned_reviewer": reviewer,
         })
     elif action == "second":
@@ -601,16 +615,18 @@ def apply_review_update(record: Dict, updates: Dict) -> Tuple[Dict, List[str]]:
             "stage": "second",
             "reviewer": second_reviewer,
             "decision": decision.title(),
+            "rejection_reason": rejection_reason,
         })
         if decision == "approve":
             updated["review_stage"] = "closed"
-            updated["review_status"] = "Resolved"
+            updated["review_status"] = "Done"
             updated["final_review_decision"] = "Approved"
         else:
             updated["review_stage"] = "first_review"
             updated["review_status"] = "Pending Review"
             updated["first_reviewed_by"] = ""
-            updated["first_review_decision"] = ""
+            updated["report_outcome"] = ""
+            updated["risk_level"] = ""
             updated["final_review_decision"] = "Rejected"
             updated["assigned_reviewer"] = ""
     elif status is not None:
