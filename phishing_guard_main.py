@@ -88,6 +88,51 @@ Respond with:
   "explanation": "Brief reason"
 }}"""
 
+    try:
+        resp = requests.post(
+            API_URL,
+            headers={"Content-Type": "application/json", "x-goog-api-key": API_KEY},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "responseMimeType": "application/json",
+                },
+            },
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return None, f"API Error {resp.status_code}"
+
+        data = resp.json()
+        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+        result = json.loads(_extract_json(raw))
+
+        if not ai_manager.validate_ai_schema(result):
+            return None, "AI reply failed validation"
+
+        result.setdefault("attack_type", "unknown")
+        result.setdefault("recommended_action", "")
+        result.setdefault("explanation", "")
+        result["analysis_mode"] = "Gemini AI"
+        return result, None
+
+    except Exception as e:
+        return None, f"API error: {e}"
+
+
+def smart_analyze(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    """Try Gemini first; fall back to the offline rules in ai_manager."""
+    result, err = call_gemini_analysis(report)
+    if result:
+        return result, None
+
+    io_manager.display_message(f"    {err} — using offline analysis")
+    result, err = ai_manager.analyze_email(report)
+    if result:
+        result["analysis_mode"] = "offline rules"
+    return result, err
+
 
 def handle_submit():
     report = io_manager.collect_report_input()
