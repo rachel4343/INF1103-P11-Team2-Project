@@ -1,3 +1,8 @@
+# ==============================================
+#  PHISHGUARD — AI Manager
+#  INF1103 Team Project
+# ==============================================
+
 import re
 from typing import Dict, Optional, Tuple
  
@@ -139,15 +144,15 @@ def analyze_email(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
  
         # Primary attack classification 
         if credential_request or (suspicious_link and impersonation):
-            attack_type = "credential harvesting"
+            attack_type = "Credential harvesting"
         elif attachment_risk:
-            attack_type = "malware delivery"
+            attack_type = "Malware delivery"
         elif impersonation:
-            attack_type = "executive impersonation"
+            attack_type = "Executive impersonation"
         elif score > 0:
-            attack_type = "suspicious spam"
+            attack_type = "Suspicious spam"
         else:
-            attack_type = "none"
+            attack_type = "None"
  
         #  Action recommendations
         if threat_level in ("critical", "high"):
