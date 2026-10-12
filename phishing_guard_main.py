@@ -11,7 +11,6 @@ from typing import Dict, Optional, Tuple
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 API_KEY = "AIzaSyD-Your-API-Key-Here"
-IT_PASSWORD = "123Api456"
 DATA_FILE = "phishguard_reports.json"
 
 
@@ -34,15 +33,16 @@ def check_it_password() -> bool:
     print("=" * 55)
     entered = input("  Enter password: ").strip()
     
-    if entered == IT_PASSWORD:
-        print("  Access granted! Welcome, Security Team.")
+    if logic_manager.verify_it_password(entered):
+        print("  Access granted! Welcome, Security Team.\n")
         return True
     else:
-        print("   Incorrect password. Access denied.")
+        print("  Incorrect password. Access denied.")
         input("\nPress Enter to return to Main Menu...")
         return False
 
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    prompt = f"""Analyze this email..."""
     """Try Gemini API first; return (None, error) if fails."""
     
     if "paste_your_key" in API_KEY:
