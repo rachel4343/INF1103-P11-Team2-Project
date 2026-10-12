@@ -186,13 +186,15 @@ def handle_it_panel() -> None:
             return
         
         idx = logic_manager.find_record_index(records, report_id)
+        if idx < 0:
+            io_manager.display_error("That report is no longer available.")
+            continue
         io_manager.display_record_detail(records[idx])
 
-        updates = io_manager.collect_review_update(
-            logic_manager.REVIEW_STATUSES, logic_manager.PRIORITIES)
-        if not updates:
-            io_manager.display_message("\n  No changes made.")
+        if records[idx].get("review_stage") == "closed":
+            io_manager.display_message("\n  This report is closed; no further review is available.")
             continue
+        updates = io_manager.collect_review_update(records[idx])
 
         updated, errors = logic_manager.apply_review_update(records[idx], updates)
         if errors:
@@ -202,7 +204,16 @@ def handle_it_panel() -> None:
 
         records[idx] = updated
         data_manager.save_records(records)
-        io_manager.display_message("\n  Saved.")
+        if updated.get("review_stage") == "awaiting_second_review":
+            io_manager.display_message(
+                f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
+            )
+        elif updated.get("review_stage") == "closed":
+            io_manager.display_message("\n  Review approved. This report is now closed.")
+        else:
+            io_manager.display_message(
+                "\n  Review rejected. The report is back in the queue for reassessment and reassignment."
+            )
 
 
 def handle_keyword_check():
