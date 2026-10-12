@@ -283,7 +283,7 @@ def show_role_menu(title: str, options: Tuple[str, ...]) -> str:
 def show_employee_menu() -> str:
     return show_role_menu("PHISHGUARD - Employee Menu", employee_menu)
 
-def show_it_menu() -> str;
+def show_it_menu() -> str:
     return show_role_menu("PHISHGUARD - IT / Cybersecurity Menu", it_menu)
 
 def prompt_it_password(verify: callable[[str], bool]) -> bool:
