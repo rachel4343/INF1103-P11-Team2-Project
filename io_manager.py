@@ -172,7 +172,7 @@ def prompt_list(label: str, item_validator, error_message: str) -> List[str]:
 
 
 # ──────────────────────────────────────────────
-#  COLLECT — employee report (Yes/No flow)
+#  COLLECT — Employee Report (Yes/No flow)
 # ──────────────────────────────────────────────
 def collect_report_input() -> Dict:
     """Collect, validate and privacy-blur one suspicious-email report."""
