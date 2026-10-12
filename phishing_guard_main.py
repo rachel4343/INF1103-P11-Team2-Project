@@ -216,8 +216,8 @@ def handle_keyword_check():
 
 
 def main():
-    ask_for_api_key()
     try:
+        ask_for_api_key()
         while True:
             choice = show_updated_menu() 
             
