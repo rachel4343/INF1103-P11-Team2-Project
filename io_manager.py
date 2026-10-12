@@ -460,6 +460,8 @@ def display_assessment(record: Dict) -> None:
     display_message(f"  Priority  : {record.get('priority', '?')}")
 
     if ai:
+        analysis_mode = ai.get("analysis_mode", "Unknown")
+        display_message(f"  Analysis  : {analysis_mode}")
         display_message(f"  Threat    : {str(ai.get('threat_level', '?')).upper()} "
                         f"({ai.get('confidence', 0):.0%} confidence)")
         display_message(f"  Attack    : {ai.get('attack_type', '?')}")
@@ -532,6 +534,7 @@ def display_record_detail(record: Dict) -> None:
     ai = record.get("ai_analysis")
     if ai:
         found = [label for key, label in INDICATOR_LABELS.items() if ai.get(key)]
+        display_message(f"  Analysis mode      : {ai.get('analysis_mode', 'Unknown')}")
         display_message(f"  Threat / attack    : {ai.get('threat_level')} / {ai.get('attack_type')}")
         display_message(f"  Confidence         : {ai.get('confidence', 0):.0%}")
         display_message(f"  Indicators         : {', '.join(found) or 'none'}")
