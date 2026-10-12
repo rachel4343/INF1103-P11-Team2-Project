@@ -401,42 +401,41 @@ def collect_priority_override(priorities) -> Dict:
     return {"priority_override": prompt_choice("New priority:", list(priorities))}
 
 
-def collect_review_update(statuses, priorities) -> Dict:
-    """IT/cybersecurity inputs. Anything skipped is left out of the result."""
-    display_message("\nUpdate report (press Enter to skip any item)")
-    updates = {}
+def collect_review_update(record: Dict) -> Dict:
+    """Collect either the first assessment or the assigned reviewer's decision."""
+    if record.get("review_stage", "first_review") == "awaiting_second_review":
+        assigned_reviewer = str(record.get("assigned_reviewer") or "")
+        display_message("\nSecond-person review")
+        reviewer = prompt_text(
+            f"Your name (assigned reviewer: {assigned_reviewer})",
+            max_length=60,
+        )
+        decision = prompt_choice(
+            "Approve the first review or reject it?", ["Approve", "Reject"]
+        )
+        note = prompt_text("Review note (optional)", required=False, max_length=1000)
+        return {
+            "review_action": "second",
+            "reviewer": reviewer,
+            "approval_decision": decision.lower(),
+            "note": note,
+        }
 
-    status = prompt_choice(
-        "Report status:", list(statuses), allow_skip=True
-    )
-    if status is not None:
-        updates["review_status"] = status
-
-    display_message("")  # spacing
-
-    override = prompt_choice(
-        "Priority override:", list(priorities), allow_skip=True
-    )
-    if override is not None:
-        updates["priority_override"] = override
-
-    display_message("")  # spacing
-
-    reviewer = prompt_text(
-        "Assigned reviewer", required=False, max_length=60
-    )
-    if reviewer:
-        updates["assigned_reviewer"] = reviewer
-
-    display_message("")  # spacing
-
-    note = prompt_text(
-        "Investigation note", required=False, max_length=1000
-    )
-    if note:
-        updates["note"] = note
-
-    return updates
+    display_message("\nFirst-person review")
+    reviewer = prompt_text("Your name", max_length=60)
+    decision = prompt_choice("Classify this report:", ["High", "Low"])
+    assigned_reviewer = prompt_text("Assign to the next reviewer", max_length=60)
+    while assigned_reviewer.casefold() == reviewer.casefold():
+        display_error("Assign this report to a different reviewer.")
+        assigned_reviewer = prompt_text("Assign to the next reviewer", max_length=60)
+    note = prompt_text("Review note (optional)", required=False, max_length=1000)
+    return {
+        "review_action": "first",
+        "reviewer": reviewer,
+        "initial_decision": decision,
+        "assigned_reviewer": assigned_reviewer,
+        "note": note,
+    }
 
 # ──────────────────────────────────────────────
 #  DISPLAY — records
@@ -485,6 +484,10 @@ def display_record_list(records: List[Dict]) -> None:
             f"{truncate(r.get('review_status', '?'), 20):<20} "
             f"{truncate(subject, 25)}"
         )
+        if r.get("assigned_reviewer"):
+            display_message(
+                f"       Assigned reviewer: {truncate(r['assigned_reviewer'], 40)}"
+            )
 
 
 def display_record_detail(record: Dict) -> None:
@@ -525,7 +528,22 @@ def display_record_detail(record: Dict) -> None:
     overridden = " (overridden)" if record.get("priority_overridden") else ""
     display_message(f"  Priority           : {record.get('priority')}{overridden}")
     display_message(f"  Status             : {record.get('review_status')}")
+    display_message(f"  Review stage       : {record.get('review_stage', 'first_review')}")
+    if record.get("first_review_decision"):
+        display_message(f"  First decision     : {record['first_review_decision']}")
+    if record.get("final_review_decision"):
+        display_message(f"  Last second review : {record['final_review_decision']}")
     display_message(f"  Assigned reviewer  : {record.get('assigned_reviewer') or 'unassigned'}")
+    for entry in record.get("review_history", []):
+        if entry.get("stage") == "first":
+            display_message(
+                f"    First: {entry.get('decision')} by {entry.get('reviewer')}; "
+                f"assigned to {entry.get('assigned_reviewer')}"
+            )
+        else:
+            display_message(
+                f"    Second: {entry.get('decision')} by {entry.get('reviewer')}"
+            )
     notes = record.get("investigation_notes", [])
     display_message(f"  Investigation notes: {len(notes)}")
     for number, note in enumerate(notes, start=1):
