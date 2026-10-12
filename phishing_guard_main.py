@@ -1,17 +1,29 @@
-import os
-import re
-import io_manager
-import data_manager
-import ai_manager
-import logic_manager
-import requests
+# ==============================================
+#  PHISHGUARD — Main
+#  INF1103 Team Project
+# ==============================================
+
+
 import json
+import os
 from typing import Dict, Optional, Tuple
+
+import requests
+
+import ai_manager
+import data_manager
+import io_manager
+import logic_manager
+
 
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
-API_KEY = "AIzaSyD-Your-API-Key-Here"
-DATA_FILE = "phishguard_reports.json"
+
+# Never hard-code the key. Set it on your own machine:
+#   Windows PowerShell : $env:GEMINI_API_KEY="your-key"
+#   Mac / Linux        : export GEMINI_API_KEY=your-key
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
 
 
 def show_updated_menu() -> int:
@@ -156,7 +168,6 @@ def handle_it_panel():
         input("Press Enter to continue...")
 
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
-    prompt = f"""Analyze this email..."""
     """Try Gemini API first; return (None, error) if fails."""
     
     if "paste_your_key" in API_KEY:
@@ -235,7 +246,7 @@ def handle_submit():
     io_manager.display_message("\n  Analysing report...")
     ai_result, ai_error = smart_analyze(report)
     
-    records = load_all_records()
+    records = data_manager.load_records()  
     report_id = logic_manager.next_report_id(records)
     record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
     
@@ -256,7 +267,7 @@ def handle_it_panel():
     
     while True:
         io_manager.display_header("IT SECURITY — REPORT REVIEW")
-        records = load_all_records()
+        records = data_manager.load_records()  
         
         if not records:
             print("  No reports submitted yet.\n")
