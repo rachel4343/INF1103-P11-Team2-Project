@@ -1,13 +1,6 @@
-# ==============================================
-#  Phishing Detection Tool
-#  INF1103 Team Project
-#
-#  Menu options:
-#    1. Submit Email Report 
-#    2. Keyword Checker Tool
-#    3. Exit
-#
-# ==============================================
+# Draft (Initial Implementation)
+# Use phishing_guard_main.py as the main entry point for the application. 
+# # It will handle user input, call the appropriate functions from other modules, and manage the overall flow of the program.
 
 import ai_manager
 import data_manager
