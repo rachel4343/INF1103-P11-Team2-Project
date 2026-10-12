@@ -41,6 +41,26 @@ def check_it_password() -> bool:
         input("\nPress Enter to return to Main Menu...")
         return False
 
+def handle_submit():
+    report = io_manager.collect_report_input()
+    io_manager.display_message("\n  Analysing report...")
+    ai_result, ai_error = smart_analyze(report)
+    
+    records = data_manager.load_records()
+    report_id = logic_manager.next_report_id(records)
+    record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
+    
+    record["review_status"] = "Pending Review"
+    record["priority_override"] = None
+    record["investigation_notes"] = []
+    record["assigned_reviewer"] = ""
+    
+    records.append(record)
+    data_manager.save_records(records)
+    
+    io_manager.display_assessment(record)
+    io_manager.display_message(f"\n  Saved! Status: Pending Review")
+
 def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
     prompt = f"""Analyze this email..."""
     """Try Gemini API first; return (None, error) if fails."""
