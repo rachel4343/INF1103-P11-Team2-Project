@@ -3,7 +3,7 @@
 #  INF1103 Team Project
 # ==============================================
 
-
+import getpass
 import json
 import os
 from typing import Dict, Optional, Tuple
@@ -23,6 +23,21 @@ API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-
 #   Windows PowerShell : $env:GEMINI_API_KEY="your-key"
 #   Mac / Linux        : export GEMINI_API_KEY=your-key
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+def ask_for_api_key() -> None:
+    """Ask for the Gemini key at th startup. Typing is hidden and the key is kept
+    in memory only: it is never written to a file or to the report JSON."""
+    global API_KEY
+    if API_KEY:
+        io_manager.display_message("Gemini API key found. AI analysis is ON.")
+        return
+    io_manager.display_message(" \n Gemini API key (get one free at aistudio.google.com/apikey)")
+    entered = getpass.getpass(" Paste key (Enter to skip, offline mode)").strip()
+    if entered:
+        API_KEY = entered
+        io_manager.display_message("AI analysis is ON.")
+    else:
+        io_manager.display_message(" No key entered. Using offline analysis.")
 
 # ──────────────────────────────────────────────
 #  MENU
