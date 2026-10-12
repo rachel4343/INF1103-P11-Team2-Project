@@ -2,10 +2,6 @@
 #  PHISHGUARD — Logic Manager
 #  INF1103 Team Project
 #
-#  Domain brain: turns the AI's assessment into a decision.
-#  The AI Manager owns the API, prompt, schema validation and retries;
-#  nothing in this file repeats that work.
-
 #  Decision = THREE kinds of evidence, not just confidence:
 #     1. severity       -> the AI's threat_level
 #     2. corroboration  -> HOW MANY warning signs are true
@@ -377,24 +373,26 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
                         f"Email check: {PRIORITY_URGENT}, because the email asks for credentials through a suspicious link ({gate})"))
 
     # Rule 3: high severity backed by impersonation + urgency, or by 3+ warning signs
+    # Confidence is not required here because multiple warning signs
+    # provide independent evidence of risk.
     if level == "high":
         if ai["impersonation"] and ai["urgency_manipulation"]:
             matched.append((PRIORITY_HIGH,
-                            f"Email check: {PRIORITY_HIGH}, because the AI rated the threat high and found impersonation and urgency pressure"))
+                            f"{PRIORITY_HIGH}, because the AI rated the threat high and found impersonation and urgency pressure"))
         elif indicators >= CORROBORATION_MIN_INDICATORS:
             matched.append((PRIORITY_HIGH,
-                            f"Email check: {PRIORITY_HIGH}, because the AI rated the threat high and found {indicators} warning signs"))
+                            f"{PRIORITY_HIGH}, because the AI rated the threat high and found {indicators} warning signs"))
 
     # Rule 4: medium severity + enough confidence (or corroboration)
     gate = confidence_gate(ai, CONF_MEDIUM, CONF_MEDIUM_CORROBORATED)
     if level == "medium" and gate:
         matched.append((PRIORITY_SECURITY,
-                        f"Email check: {PRIORITY_SECURITY}, because the AI rated the threat medium ({gate})"))
+                        f"{PRIORITY_SECURITY}, because the AI rated the threat medium ({gate})"))
 
     # Rule 5: dismiss as low ONLY with very high confidence and no suspicious link
     if level == "low" and ai["confidence"] >= CONF_LOW and not ai["suspicious_link"]:
         matched.append((PRIORITY_LOW,
-                        f"Email check: {PRIORITY_LOW}, because the AI rated the threat low ({ai['confidence']:.0%} sure) "
+                        f"{PRIORITY_LOW}, because the AI rated the threat low ({ai['confidence']:.0%} sure) "
                         f"and found no suspicious link"))
 
     return matched
