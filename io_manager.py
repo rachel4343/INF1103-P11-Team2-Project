@@ -239,7 +239,7 @@ def collect_report_input() -> Dict:
 
 
 # ──────────────────────────────────────────────
-#  MENUS AND SELECTION
+#  MENU AND SELECTION
 # ──────────────────────────────────────────────
 role_employee = "employee"
 role_it = "it"
