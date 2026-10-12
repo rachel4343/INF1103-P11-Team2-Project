@@ -29,15 +29,15 @@ def ask_for_api_key() -> None:
     in memory only: it is never written to a file or to the report JSON."""
     global API_KEY
     if API_KEY:
-        io_manager.display_message("Gemini API key found. AI analysis is ON.")
+        io_manager.display_message("Gemini API analysis is ON (API key found).")
         return
     io_manager.display_message("\nGemini API key (get one free at aistudio.google.com/apikey)")
     entered = getpass.getpass("Paste key (Enter to skip, offline mode)").strip()
     if entered:
         API_KEY = entered
-        io_manager.display_message("\nAI analysis is ON.")
+        io_manager.display_message("\nGemini API analysis is ON.")
     else:
-        io_manager.display_message("\nNo key entered. Using offline analysis.")
+        io_manager.display_message("\nNo API key entered. Using offline analysis.")
 
 # ──────────────────────────────────────────────
 #  MENU
