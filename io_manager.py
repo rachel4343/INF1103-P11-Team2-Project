@@ -113,27 +113,36 @@ def prompt_choice(label: str, options: List[str], allow_skip: bool = False) -> O
         raw = input(f"Choose 1-{len(options)}{suffix}: ").strip()
         if allow_skip and not raw:
             return None
-        for number, option in enumerate(options, start=1):
-            if raw == str(number):
-                return option
+        if raw.isdigit() and 1 <= int(raw) <= len(options):
+            return options[int(raw) - 1]
         display_error(f"Please enter a number from 1 to {len(options)}.")
 
 
 def prompt_multiline(label: str, max_length: int = MAX_BODY_LENGTH) -> str:
-    """Read lines until a line containing only END. Body is required."""
+    """Read lines until END is entered (case-insensitive). Body is required."""
     while True:
-        display_message(f"{label} (type {BODY_END_MARKER} on its own line to finish):")
+        display_message(
+            f"{label} (type {BODY_END_MARKER} on its own line to finish):"
+        )
         lines = []
+
         while True:
             line = input()
-            if line.strip() == BODY_END_MARKER:
+
+            # Accept END regardless of uppercase/lowercase
+            if line.strip().upper() == BODY_END_MARKER.upper():
                 break
+
             lines.append(line)
+
         text = clean_text("\n".join(lines))
+
         if not text:
             display_error("This field is required.")
         elif len(text) > max_length:
-            display_error(f"Too long (max {max_length} characters). Please shorten it.")
+            display_error(
+                f"Too long (max {max_length} characters). Please shorten it."
+            )
         else:
             return text
 
@@ -193,8 +202,7 @@ def collect_report_input() -> Dict:
         }
 
     display_message("\nEnter the email details.")
-    sender_email = prompt_text("Sender email (Enter if unknown)", required=False,
-                               validator=is_valid_email,
+    sender_email = prompt_text("Sender email", validator=is_valid_email,
                                error_message="That doesn't look like an email address.")
     sender_name = prompt_text("Sender display name", required=False)
     subject = prompt_text("Email subject")
@@ -203,8 +211,6 @@ def collect_report_input() -> Dict:
     attachments = prompt_list("Attachment file names", is_valid_filename,
                               "Not a valid file name (need a name and extension)")
     reason = prompt_text("Why do you think it is suspicious", required=False)
-
-    display_message("\nWhat did you do with the email?")
     clicked = prompt_yes_no("Did you click any link?") if urls else False
     opened = prompt_yes_no("Did you open any attachment?") if attachments else False
     entered = prompt_yes_no("Did you enter any password or personal information?")
@@ -217,7 +223,7 @@ def collect_report_input() -> Dict:
     # personal data, so it is kept as-is for spoofing analysis.
     return {
         "viewed": True,
-        "sender_email": sender_email or "Not provided",
+        "sender_email": sender_email,
         "sender_name": blur_privacy(sender_name) or "Not provided",
         "subject": blur_privacy(subject),
         "body": body_safe,
@@ -258,9 +264,8 @@ max_password_attempts = 3
 def prompt_menu_number(count: int) -> int:
     while True:
         raw = input(f"\nChoose (1-{count}): ").strip()
-        for number in range(1, count + 1):
-            if raw == str(number):
-                return number
+        if raw.isdigit() and 1 <= int(raw) <= count:
+            return int(raw)
         display_error(f"Please enter a number from 1 to {count}.")
 
 
@@ -380,7 +385,7 @@ def collect_record_id(records: List[Dict]) -> Optional[str]:
     """Ask for a report id that exists. Enter cancels (returns None)."""
     known = {str(r.get("report_id", "")).upper() for r in records}
     while True:
-        raw = input("Enter report ID (e.g. PG-0001, Enter to cancel): ").strip()
+        raw = input("\nEnter report ID (e.g. PG-0001, Enter to cancel): ").strip()
         if not raw:
             return None
         if raw.upper() in known:
@@ -396,40 +401,42 @@ def collect_priority_override(priorities) -> Dict:
     return {"priority_override": prompt_choice("New priority:", list(priorities))}
 
 
-def collect_review_update(record: Dict) -> Dict:
-    """Collect either the first assessment or the assigned reviewer's decision."""
-    stage = record.get("review_stage", "first_review")
-    if stage == "awaiting_second_review":
-        display_message("\nSecond-person review")
-        reviewer = prompt_text(
-            f"Your name (assigned reviewer: {record.get('assigned_reviewer', '')})",
-            max_length=60,
-        )
-        decision = prompt_choice("Approve the first review or reject it?", ["Approve", "Reject"])
-        note = prompt_text("Review note (optional)", required=False, max_length=1000)
-        return {
-            "review_action": "second",
-            "reviewer": reviewer,
-            "approval_decision": decision.lower(),
-            "note": note,
-        }
+def collect_review_update(statuses, priorities) -> Dict:
+    """IT/cybersecurity inputs. Anything skipped is left out of the result."""
+    display_message("\nUpdate report (press Enter to skip any item)")
+    updates = {}
 
-    display_message("\nFirst-person review")
-    reviewer = prompt_text("Your name", max_length=60)
-    decision = prompt_choice("Classify this report:", ["High", "Low"])
-    assigned_reviewer = prompt_text("Assign to the next reviewer", max_length=60)
-    while assigned_reviewer.casefold() == reviewer.casefold():
-        display_error("Assign this report to a different reviewer.")
-        assigned_reviewer = prompt_text("Assign to the next reviewer", max_length=60)
-    note = prompt_text("Review note (optional)", required=False, max_length=1000)
-    return {
-        "review_action": "first",
-        "reviewer": reviewer,
-        "initial_decision": decision,
-        "assigned_reviewer": assigned_reviewer,
-        "note": note,
-    }
+    status = prompt_choice(
+        "Report status:", list(statuses), allow_skip=True
+    )
+    if status is not None:
+        updates["review_status"] = status
 
+    display_message("")  # spacing
+
+    override = prompt_choice(
+        "Priority override:", list(priorities), allow_skip=True
+    )
+    if override is not None:
+        updates["priority_override"] = override
+
+    display_message("")  # spacing
+
+    reviewer = prompt_text(
+        "Assigned reviewer", required=False, max_length=60
+    )
+    if reviewer:
+        updates["assigned_reviewer"] = reviewer
+
+    display_message("")  # spacing
+
+    note = prompt_text(
+        "Investigation note", required=False, max_length=1000
+    )
+    if note:
+        updates["note"] = note
+
+    return updates
 
 # ──────────────────────────────────────────────
 #  DISPLAY — records
@@ -478,8 +485,6 @@ def display_record_list(records: List[Dict]) -> None:
             f"{truncate(r.get('review_status', '?'), 20):<20} "
             f"{truncate(subject, 25)}"
         )
-        if r.get("assigned_reviewer"):
-            display_message(f"       Assigned reviewer: {truncate(r['assigned_reviewer'], 40)}")
 
 
 def display_record_detail(record: Dict) -> None:
@@ -520,22 +525,7 @@ def display_record_detail(record: Dict) -> None:
     overridden = " (overridden)" if record.get("priority_overridden") else ""
     display_message(f"  Priority           : {record.get('priority')}{overridden}")
     display_message(f"  Status             : {record.get('review_status')}")
-    display_message(f"  Review stage       : {record.get('review_stage', 'first_review')}")
-    if record.get("first_review_decision"):
-        display_message(f"  First decision     : {record['first_review_decision']}")
-    if record.get("final_review_decision"):
-        display_message(f"  Last second review : {record['final_review_decision']}")
     display_message(f"  Assigned reviewer  : {record.get('assigned_reviewer') or 'unassigned'}")
-    for entry in record.get("review_history", []):
-        if entry.get("stage") == "first":
-            display_message(
-                f"    First: {entry.get('decision')} by {entry.get('reviewer')}; "
-                f"assigned to {entry.get('assigned_reviewer')}"
-            )
-        else:
-            display_message(
-                f"    Second: {entry.get('decision')} by {entry.get('reviewer')}"
-            )
     notes = record.get("investigation_notes", [])
     display_message(f"  Investigation notes: {len(notes)}")
     for number, note in enumerate(notes, start=1):
