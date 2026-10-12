@@ -33,25 +33,11 @@ def show_updated_menu() -> int:
     io_manager.display_message("  2. IT Security Personnel    (View & Manage)")
     io_manager.display_message("  3. Keyword Checker Tool")
     io_manager.display_message("  4. Exit")
-    while True:
-        raw = input("\nChoose (1-4): ").strip()
-        if raw in ("1", "2", "3", "4"):
-            return int(raw)
-        io_manager.display_error("Please choose 1, 2, 3, or 4.")
+    return io_manager.prompt_menu_number(4)
 
 def check_it_password() -> bool:
-    print("\n" + "=" * 55)
-    print("        IT SECURITY — LOGIN REQUIRED")
-    print("=" * 55)
-    entered = input("  Enter password: ").strip()
-    
-    if logic_manager.verify_it_password(entered):
-        print("  Access granted! Welcome, Security Team.\n")
-        return True
-    else:
-        print("  Incorrect password. Access denied.")
-        input("\nPress Enter to return to Main Menu...")
-        return False
+    """Hidden typing, 3 attempts (handled by the I/O Manager)."""
+    return io_manager.prompt_it_password(logic_manager.verify_it_password)
 
 def handle_submit():
     report = io_manager.collect_report_input()
