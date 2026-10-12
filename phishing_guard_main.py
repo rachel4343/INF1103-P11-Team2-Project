@@ -24,6 +24,9 @@ API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-
 #   Mac / Linux        : export GEMINI_API_KEY=your-key
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
+# ──────────────────────────────────────────────
+#  MENU
+# ──────────────────────────────────────────────
 
 
 def show_updated_menu() -> int:
@@ -38,6 +41,53 @@ def show_updated_menu() -> int:
 def check_it_password() -> bool:
     """Hidden typing, 3 attempts (handled by the I/O Manager)."""
     return io_manager.prompt_it_password(logic_manager.verify_it_password)
+
+# ──────────────────────────────────────────────
+#  AI ANALYSIS (Gemini first, offline rules as backup)
+# ──────────────────────────────────────────────
+
+def _extract_json(text: str) -> str:
+    """Remove a ```json ... ``` fence if the model added one."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+        text = text.rsplit("```", 1)[0]
+    return text.strip()
+
+def call_gemini_analysis(report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+    """Try the Gemini API. Returns (result, None) or (None, error message)."""
+    if not API_KEY:
+        return None, "API key not set"
+
+    if not report.get("viewed", True):
+        subject = "NOT VIEWED"
+        body = f"Reason: {report.get('reason_for_suspicion', '')}"
+    else:
+        subject = str(report.get("subject") or "")
+        body = str(report.get("body") or "")
+
+    sender = f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
+
+    prompt = f"""Analyze this email for phishing. Return ONLY valid JSON.
+
+SENDER: {sender}
+SUBJECT: {subject}
+BODY: {body}
+
+Respond with:
+{{
+  "threat_level": "low|medium|high|critical",
+  "confidence": 0.0 to 1.0,
+  "impersonation": true or false,
+  "urgency_manipulation": true or false,
+  "credential_request": true or false,
+  "suspicious_link": true or false,
+  "attachment_risk": true or false,
+  "attack_type": "type or none",
+  "recommended_action": "one short sentence",
+  "explanation": "Brief reason"
+}}"""
+
 
 def handle_submit():
     report = io_manager.collect_report_input()
