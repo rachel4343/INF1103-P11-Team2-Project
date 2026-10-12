@@ -14,19 +14,6 @@ API_KEY = "AIzaSyD-Your-API-Key-Here"
 IT_PASSWORD = "123Api456"
 DATA_FILE = "phishguard_reports.json"
 
-def load_all_records():
-    if not os.path.exists(DATA_FILE):
-        return []
-    try:
-        with open(DATA_FILE, "r") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except:
-        return []
-
-def save_all_records(records):
-    with open(DATA_FILE, "w") as f:
-        json.dump(records, f, indent=2)
 
 def show_updated_menu() -> int:
     """Show 4-option menu directly here — no touching friend's file!"""
