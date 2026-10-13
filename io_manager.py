@@ -405,23 +405,42 @@ def collect_review_update(record: Dict) -> Dict:
     """Collect the first review status or the assigned reviewer's approval."""
     if record.get("review_stage", "first_review") == "awaiting_second_review":
         assigned_reviewer = str(record.get("assigned_reviewer") or "")
+
         display_message("\nSecond-person review")
         display_message(
             f"  Workflow status: {record.get('review_status', 'Pending Review')}"
         )
-        display_message(f"  Outcome: {record.get('report_outcome', 'Not recorded')}")
-        display_message(f"  Risk level: {record.get('risk_level', 'Not recorded')}")
+        display_message(
+            f"  Outcome: {record.get('report_outcome', 'Not recorded')}"
+        )
+        display_message(
+            f"  Risk level: {record.get('risk_level', 'Not recorded')}"
+        )
+
         reviewer = prompt_text(
             f"Your name (assigned reviewer: {assigned_reviewer})",
             max_length=60,
         )
+
+        # Only the assigned reviewer can approve or reject.
+        if reviewer.casefold() != assigned_reviewer.casefold():
+            display_error("Only the assigned reviewer can approve or reject this review.")
+            return {
+                "review_action": "unauthorized",
+                "reviewer": reviewer,
+            }
+
+        # Only reached if the reviewer is the assigned reviewer.
         decision = prompt_choice(
-            "Approve the first review or reject it?", ["Approve", "Reject"]
+            "Approve the first review or reject it?",
+            ["Approve", "Reject"]
         )
+
         rejection_reason = ""
         if decision == "Reject":
             display_message("Explain why you are rejecting this review.")
             rejection_reason = prompt_multiline("Rejection reason")
+
         return {
             "review_action": "second",
             "reviewer": reviewer,
