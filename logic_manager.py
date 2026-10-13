@@ -384,7 +384,7 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
             matched.append((PRIORITY_HIGH,
                             f"{PRIORITY_HIGH}, because the AI rated the threat high and found {indicators} warning signs"))
 
-    # Rule 4: medium severity + enough confidence (or corroboration)
+    # Rule 4: medium severity + enough confidence (*or corroboration)
     gate = confidence_gate(ai, CONF_MEDIUM, CONF_MEDIUM_CORROBORATED)
     if level == "medium" and gate:
         matched.append((PRIORITY_SECURITY,
