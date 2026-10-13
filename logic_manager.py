@@ -365,13 +365,13 @@ def evaluate_rules(ai: Dict) -> List[Tuple[str, str]]:
     gate = confidence_gate(ai, CONF_CRITICAL, CONF_CRITICAL_CORROBORATED)
     if level == "critical" and gate:
         matched.append((PRIORITY_CRITICAL,
-                        f"Email check: {PRIORITY_CRITICAL}, because the AI rated the threat critical ({gate})"))
+                        f"{PRIORITY_CRITICAL}, because the AI rated the threat critical ({gate})"))
 
     # Rule 2: credentials requested via a suspicious link (multi-condition)
     gate = confidence_gate(ai, CONF_CREDENTIAL_LINK, CONF_CREDENTIAL_LINK_CORROBORATED)
     if ai["credential_request"] and ai["suspicious_link"] and gate:
         matched.append((PRIORITY_URGENT,
-                        f"Email check: {PRIORITY_URGENT}, because the email asks for credentials through a suspicious link ({gate})"))
+                        f"{PRIORITY_URGENT}, because the email asks for credentials through a suspicious link ({gate})"))
 
     # Rule 3: high severity backed by impersonation + urgency, or by 3+ warning signs
     # Confidence is not required here because multiple warning signs
@@ -436,25 +436,25 @@ def apply_business_rules(report: Optional[Dict], ai_result) -> Dict:
 
     if not has_usable_ai_result(ai_result):
         priority = PRIORITY_MANUAL
-        triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI result was unavailable or incomplete"]
+        triggered = [f"{PRIORITY_MANUAL}, because the AI result was unavailable or incomplete"]
         ai = {}
     else:
         ai = ai_result
         matched = evaluate_rules(ai)
         if matched:
-            # Conflicting rules: the HIGHEST-risk outcome wins
+            # If multiple rules match, only keep the highest-priority rule.
             best = max(matched, key=lambda m: PRIORITY_RANK[m[0]])
             priority = best[0]
-            triggered = [m[1] for m in matched]
+            triggered = [best[1]]
         elif ai["threat_level"] in ("high", "critical"):
             # Fallback: the AI called it serious but was not confident enough for
             # any rule. A serious threat must never rank below Security Review.
             priority = PRIORITY_SECURITY
-            triggered = [f"Email check: {PRIORITY_SECURITY}, because the AI rated the threat {ai['threat_level']} "
+            triggered = [f"{PRIORITY_SECURITY}, because the AI rated the threat {ai['threat_level']} "
                          f"but was not sure enough for a firm rule"]
         else:
             priority = PRIORITY_MANUAL
-            triggered = [f"Email check: {PRIORITY_MANUAL}, because the AI was not sure enough to decide"]
+            triggered = [f"{PRIORITY_MANUAL}, because the AI was not sure enough to decide"]
 
         # Conflicting indicators (low threat but warning signs): never stay below Security Review
         if has_conflicting_indicators(ai) and PRIORITY_RANK[priority] < PRIORITY_RANK[PRIORITY_SECURITY]:
