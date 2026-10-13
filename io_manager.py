@@ -487,7 +487,7 @@ def display_record_list(records: List[Dict]) -> None:
         display_message("  No reports to show.")
         return
     display_message(f"  {'ID':<8} {'Priority':<23} {'Threat':<9} {'Score':<6} {'Status':<20} Subject")
-    display_message("  " + "-" * (LINE_WIDTH + 10))
+    display_message("  " + "-" * 100)
     for r in records:
         subject = (r.get("report") or {}).get("subject", "")
         display_message(
