@@ -488,7 +488,7 @@ def display_record_list(records: List[Dict]) -> None:
         return
     display_message(f"  {'ID':<8} {'Priority':<23} {'Threat':<9} {'Score':<6} {'Status':<20} Subject")
     display_message("  " + "-" * 100)
-    for r in records:
+    for r in sorted(records, key=lambda r: str(r.get("report_id", ""))):
         subject = (r.get("report") or {}).get("subject", "")
         display_message(
             f"  {truncate(r.get('report_id', '?'), 8):<8} "
