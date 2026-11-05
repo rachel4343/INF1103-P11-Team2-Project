@@ -144,3 +144,22 @@ def filter_records(records: list, **criteria) -> list:
     active = {k: v for k, v in criteria.items() if v is not None}
     return [r for r in records
             if isinstance(r, dict) and all(_matches(r, k, v) for k, v in active.items())]
+
+def find_record(records: list, report_id: str):
+    """The record with this report ID (any letter case), or None."""
+    wanted = str(report_id).strip().upper()
+    for r in records:
+        if isinstance(r, dict) and str(r.get("report_id", "")).upper() == wanted:
+            return r
+    return None
+
+
+def count_by(records: list, field: str) -> dict:
+    """How many records have each value of a field, biggest group first.
+    Example: count_by(records, "priority") -> {"Critical": 3, "Low Priority": 2}"""
+    counts = {}
+    for r in records:
+        if isinstance(r, dict):
+            value = str(r.get(field) or "(blank)")
+            counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: -item[1]))
