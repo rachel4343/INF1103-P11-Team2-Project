@@ -87,3 +87,41 @@ class CredentialLinkRule(PriorityRule):
             return PRIORITY_URGENT, reason
 
         return None
+
+
+class HighThreatRule(PriorityRule):
+    """
+    Rule 3: High threat supported by multiple warning indicators.
+
+    Matches when:
+    - Impersonation AND urgency manipulation are both true, OR
+    - At least three warning indicators are true.
+    """
+
+    def evaluate(self, ai_result: Dict) -> Optional[Tuple[str, str]]:
+
+        if ai_result["threat_level"] == "high":
+
+            indicators = self.count_indicators(ai_result)
+
+            if (
+                ai_result["impersonation"]
+                and ai_result["urgency_manipulation"]
+            ):
+                reason = (
+                    f"{PRIORITY_HIGH}, because the AI rated the threat "
+                    f"high and found impersonation and urgency pressure"
+                )
+
+                return PRIORITY_HIGH, reason
+
+            elif indicators >= CORROBORATION_MIN_INDICATORS:
+                reason = (
+                    f"{PRIORITY_HIGH}, because the AI rated the threat "
+                    f"high and found {indicators} warning signs"
+                )
+
+                return PRIORITY_HIGH, reason
+
+        return None
+
