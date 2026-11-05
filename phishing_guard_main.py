@@ -17,12 +17,13 @@ import logic_manager
 
 
 
-API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 
 # Never hard-code the key. Set it on your own machine:
 #   Windows PowerShell : $env:GEMINI_API_KEY="your-key"
 #   Mac / Linux        : export GEMINI_API_KEY=your-key
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
 
 def ask_for_api_key() -> None:
     """Ask for the Gemini key at startup. Typing is hidden and the key is kept
