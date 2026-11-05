@@ -125,3 +125,25 @@ class HighThreatRule(PriorityRule):
 
         return None
 
+
+class MediumThreatRule(PriorityRule):
+    """Rule 4: Medium threat with sufficient AI confidence."""
+
+    def evaluate(self, ai_result: Dict) -> Optional[Tuple[str, str]]:
+
+        gate = self.confidence_gate(
+            ai_result,
+            CONF_MEDIUM,
+            CONF_MEDIUM_CORROBORATED
+        )
+
+        if ai_result["threat_level"] == "medium" and gate:
+            reason = (
+                f"{PRIORITY_SECURITY}, because the AI rated the "
+                f"threat medium ({gate})"
+            )
+
+            return PRIORITY_SECURITY, reason
+
+        return None
+
