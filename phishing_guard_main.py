@@ -170,13 +170,42 @@ def handle_submit() -> None:
     io_manager.display_message("\n  Saved! Status: Pending Review")
 
 
+def review_report(records: list, idx: int) -> None:
+    """Show one report, then run the IT review step for it (first review or second-person approval)."""
+    io_manager.display_record_detail(records[idx])
+
+    if records[idx].get("review_stage") == "closed":
+        io_manager.display_message("\n  This report is closed; no further review is available.")
+        return
+    updates = io_manager.collect_review_update(records[idx])
+
+    updated, errors = logic_manager.apply_review_update(records[idx], updates)
+    if errors:
+        for error in errors:
+            io_manager.display_error(error)
+        return
+
+    records[idx] = updated
+    data_manager.save_records(records)
+    if updated.get("review_stage") == "awaiting_second_review":
+        io_manager.display_message(
+            f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
+        )
+    elif updated.get("review_stage") == "closed":
+        io_manager.display_message("\n  Review approved. This report is now closed.")
+    else:
+        io_manager.display_message(
+            "\n  Review rejected. The report is back in the queue for reassessment and reassignment."
+        )
+
+
 def handle_it_panel() -> None:
     if not check_it_password():
         return
-    
+
     while True:
         records = data_manager.load_records()
-        io_manager.display_record_list(logic_manager.sort_records_by_priority(records))    
+        io_manager.display_record_list(logic_manager.sort_records_by_priority(records))
         if not records:
             print("  No reports submitted yet.\n")
             input("Press Enter to return...")
@@ -184,37 +213,12 @@ def handle_it_panel() -> None:
         report_id = io_manager.collect_record_id(records)
         if report_id is None:
             return
-        
+
         idx = logic_manager.find_record_index(records, report_id)
         if idx < 0:
             io_manager.display_error("That report is no longer available.")
             continue
-        io_manager.display_record_detail(records[idx])
-
-        if records[idx].get("review_stage") == "closed":
-            io_manager.display_message("\n  This report is closed; no further review is available.")
-            continue
-        updates = io_manager.collect_review_update(records[idx])
-
-        updated, errors = logic_manager.apply_review_update(records[idx], updates)
-        if errors:
-            for error in errors:
-                io_manager.display_error(error)
-            continue
-
-        records[idx] = updated
-        data_manager.save_records(records)
-        if updated.get("review_stage") == "awaiting_second_review":
-            io_manager.display_message(
-                f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
-            )
-        elif updated.get("review_stage") == "closed":
-            io_manager.display_message("\n  Review approved. This report is now closed.")
-        else:
-            io_manager.display_message(
-                "\n  Review rejected. The report is back in the queue for reassessment and reassignment."
-            )
-
+        review_report(records, idx)
 
 def handle_keyword_check():
     text = io_manager.collect_keyword_text()
