@@ -70,3 +70,40 @@ def save_report(report: Dict, decision: Dict):
     print(f"   File: {DATA_FILE}")
     if same_scam:
         print(f"   Note: this scam was reported {same_scam} time(s) before")
+
+EXACT_FILTERS = ("priority", "threat_level", "attack_type", "review_status",
+                 "review_stage", "assigned_reviewer", "first_reviewed_by")
+OTHER_FILTERS = ("viewed", "user_acted", "min_risk", "max_risk")
+
+
+def _report(record: Dict) -> Dict:
+    """The employee's report inside a record, or an empty dict if it is missing or malformed."""
+    report = record.get("report")
+    return report if isinstance(report, dict) else {}
+
+
+def _as_list(value) -> list:
+    """Make sure links and attachments are always handled as a list."""
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value] if value else []
+
+
+def _search_text(record: Dict) -> str:
+    """Everything a person might search for in one record, joined into one lowercase string."""
+    report = _report(record)
+    parts = [
+        record.get("report_id"), record.get("attack_type"),
+        record.get("assigned_reviewer"), record.get("first_reviewed_by"),
+        report.get("sender_name"), report.get("sender_email"),
+        report.get("subject"), report.get("body"), report.get("reason_for_suspicion"),
+    ]
+    parts += _as_list(report.get("urls")) + _as_list(report.get("attachments"))
+    return " ".join(str(p) for p in parts if p).lower()
+
+
+def search_records(records: list, text: str) -> list:
+    """Records that contain every word of text, in any letter case, in the ID, sender,
+    subject, body, reason, links, attachments, attack type or reviewer. Empty text returns all."""
+    words = str(text or "").lower().split()
+    return [r for r in records if isinstance(r, dict) and all(w in _search_text(r) for w in words)]
