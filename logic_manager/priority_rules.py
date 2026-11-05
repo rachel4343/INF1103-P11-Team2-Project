@@ -57,3 +57,33 @@ class CriticalThreatRule(PriorityRule):
             return PRIORITY_CRITICAL, reason
 
         return None
+
+
+class CredentialLinkRule(PriorityRule):
+    """
+    Rule 2: Credentials requested through a suspicious link.
+
+    Both indicators must be true.
+    """
+
+    def evaluate(self, ai_result: Dict) -> Optional[Tuple[str, str]]:
+
+        gate = self.confidence_gate(
+            ai_result,
+            CONF_CREDENTIAL_LINK,
+            CONF_CREDENTIAL_LINK_CORROBORATED
+        )
+
+        if (
+            ai_result["credential_request"]
+            and ai_result["suspicious_link"]
+            and gate
+        ):
+            reason = (
+                f"{PRIORITY_URGENT}, because the email asks for "
+                f"credentials through a suspicious link ({gate})"
+            )
+
+            return PRIORITY_URGENT, reason
+
+        return None
