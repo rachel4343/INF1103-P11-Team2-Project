@@ -45,13 +45,14 @@ def ask_for_api_key() -> None:
 
 
 def show_updated_menu() -> int:
-    """Show 4-option menu directly here — no touching friend's file!"""
+    """Show 5-option menu directly here — no touching friend's file!"""
     io_manager.display_header("PHISHGUARD — Main Menu")
     io_manager.display_message("  1. Submit Email Report (Employee / User)")
     io_manager.display_message("  2. IT Security Personnel (View & Manage)")
     io_manager.display_message("  3. Keyword Checker Tool")
-    io_manager.display_message("  4. Exit")
-    return io_manager.prompt_menu_number(4)
+    io_manager.display_message("  4. Find a Report (Search & Filter)")
+    io_manager.display_message("  5. Exit")
+    return io_manager.prompt_menu_number(5)
 
 def check_it_password() -> bool:
     """Hidden typing, 3 attempts (handled by the I/O Manager)."""
@@ -170,13 +171,42 @@ def handle_submit() -> None:
     io_manager.display_message("\n  Saved! Status: Pending Review")
 
 
+def review_report(records: list, idx: int) -> None:
+    """Show one report, then run the IT review step for it (first review or second-person approval)."""
+    io_manager.display_record_detail(records[idx])
+
+    if records[idx].get("review_stage") == "closed":
+        io_manager.display_message("\n  This report is closed; no further review is available.")
+        return
+    updates = io_manager.collect_review_update(records[idx])
+
+    updated, errors = logic_manager.apply_review_update(records[idx], updates)
+    if errors:
+        for error in errors:
+            io_manager.display_error(error)
+        return
+
+    records[idx] = updated
+    data_manager.save_records(records)
+    if updated.get("review_stage") == "awaiting_second_review":
+        io_manager.display_message(
+            f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
+        )
+    elif updated.get("review_stage") == "closed":
+        io_manager.display_message("\n  Review approved. This report is now closed.")
+    else:
+        io_manager.display_message(
+            "\n  Review rejected. The report is back in the queue for reassessment and reassignment."
+        )
+
+
 def handle_it_panel() -> None:
     if not check_it_password():
         return
-    
+
     while True:
         records = data_manager.load_records()
-        io_manager.display_record_list(logic_manager.sort_records_by_priority(records))    
+        io_manager.display_record_list(logic_manager.sort_records_by_priority(records))
         if not records:
             print("  No reports submitted yet.\n")
             input("Press Enter to return...")
@@ -184,37 +214,71 @@ def handle_it_panel() -> None:
         report_id = io_manager.collect_record_id(records)
         if report_id is None:
             return
-        
+
         idx = logic_manager.find_record_index(records, report_id)
         if idx < 0:
             io_manager.display_error("That report is no longer available.")
             continue
-        io_manager.display_record_detail(records[idx])
+        review_report(records, idx)
 
-        if records[idx].get("review_stage") == "closed":
-            io_manager.display_message("\n  This report is closed; no further review is available.")
-            continue
-        updates = io_manager.collect_review_update(records[idx])
+def open_from_results(records: list, found: list) -> None:
+    """One match opens straight away; several show a short list to choose from."""
+    if not found:
+        io_manager.display_error("No reports match that.")
+        return
+    if len(found) == 1:
+        report_id = found[0].get("report_id", "")
+    else:
+        io_manager.display_record_list(found)
+        report_id = io_manager.collect_record_id(found)
+        if report_id is None:
+            return
+    idx = logic_manager.find_record_index(records, report_id)
+    if idx < 0:
+        io_manager.display_error("That report is no longer available.")
+        return
+    review_report(records, idx)
 
-        updated, errors = logic_manager.apply_review_update(records[idx], updates)
-        if errors:
-            for error in errors:
-                io_manager.display_error(error)
-            continue
 
-        records[idx] = updated
-        data_manager.save_records(records)
-        if updated.get("review_stage") == "awaiting_second_review":
-            io_manager.display_message(
-                f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
-            )
-        elif updated.get("review_stage") == "closed":
-            io_manager.display_message("\n  Review approved. This report is now closed.")
+def handle_search() -> None:
+    """IT only: find a report by ID, words or filters and go straight to it."""
+    if not check_it_password():
+        return
+    while True:
+        records = data_manager.load_records()
+        if not records:
+            io_manager.display_message("  No reports submitted yet.")
+            input("Press Enter to return...")
+            return
+
+        choice = io_manager.prompt_choice(
+            "\nFind a report:",
+            ["Find by report ID or words", "Filter by priority", "Filter by threat level",
+             "Filter by review status", "Filter by risk score", "Back"],
+        )
+        if choice == "Back":
+            return
+        if choice == "Find by report ID or words":
+            text = io_manager.prompt_text("Report ID, sender, subject or other words")
+            exact = data_manager.find_record(records, text)
+            found = [exact] if exact else data_manager.search_records(records, text)
+        elif choice == "Filter by priority":
+            value = io_manager.prompt_choice("Priority:", list(logic_manager.PRIORITIES))
+            found = data_manager.filter_records(records, priority=value)
+        elif choice == "Filter by threat level":
+            value = io_manager.prompt_choice("Threat level:", list(logic_manager.THREAT_LEVELS) + ["unknown"])
+            found = data_manager.filter_records(records, threat_level=value)
+        elif choice == "Filter by review status":
+            value = io_manager.prompt_choice("Review status:", list(logic_manager.REVIEW_STATUSES))
+            found = data_manager.filter_records(records, review_status=value)
         else:
-            io_manager.display_message(
-                "\n  Review rejected. The report is back in the queue for reassessment and reassignment."
-            )
+            low = io_manager.prompt_text("Lowest risk score (Enter for 0)", required=False,
+                                         validator=str.isdigit, error_message="Please type a whole number.")
+            high = io_manager.prompt_text("Highest risk score (Enter for 100)", required=False,
+                                          validator=str.isdigit, error_message="Please type a whole number.")
+            found = data_manager.filter_records(records, min_risk=int(low or 0), max_risk=int(high or 100))
 
+        open_from_results(records, found)
 
 def handle_keyword_check():
     text = io_manager.collect_keyword_text()
@@ -239,6 +303,8 @@ def main():
             elif choice == 3:
                 handle_keyword_check()
             elif choice == 4:
+                handle_search()
+            elif choice == 5:
                 io_manager.display_message("\nStay safe! Goodbye.")
                 break
             else:

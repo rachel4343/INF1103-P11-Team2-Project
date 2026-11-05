@@ -70,3 +70,96 @@ def save_report(report: Dict, decision: Dict):
     print(f"   File: {DATA_FILE}")
     if same_scam:
         print(f"   Note: this scam was reported {same_scam} time(s) before")
+
+EXACT_FILTERS = ("priority", "threat_level", "attack_type", "review_status",
+                 "review_stage", "assigned_reviewer", "first_reviewed_by")
+OTHER_FILTERS = ("viewed", "user_acted", "min_risk", "max_risk")
+
+
+def _report(record: Dict) -> Dict:
+    """The employee's report inside a record, or an empty dict if it is missing or malformed."""
+    report = record.get("report")
+    return report if isinstance(report, dict) else {}
+
+
+def _as_list(value) -> list:
+    """Make sure links and attachments are always handled as a list."""
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value] if value else []
+
+
+def _search_text(record: Dict) -> str:
+    """Everything a person might search for in one record, joined into one lowercase string."""
+    report = _report(record)
+    parts = [
+        record.get("report_id"), record.get("attack_type"),
+        record.get("assigned_reviewer"), record.get("first_reviewed_by"),
+        report.get("sender_name"), report.get("sender_email"),
+        report.get("subject"), report.get("body"), report.get("reason_for_suspicion"),
+    ]
+    parts += _as_list(report.get("urls")) + _as_list(report.get("attachments"))
+    return " ".join(str(p) for p in parts if p).lower()
+
+
+def search_records(records: list, text: str) -> list:
+    """Records that contain every word of text, in any letter case, in the ID, sender,
+    subject, body, reason, links, attachments, attack type or reviewer. Empty text returns all."""
+    words = str(text or "").lower().split()
+    return [r for r in records if isinstance(r, dict) and all(w in _search_text(r) for w in words)]
+
+def _risk(record: Dict) -> float:
+    try:
+        return float(record.get("risk_score", 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _user_acted(record: Dict) -> bool:
+    """True if the employee clicked a link, opened an attachment or entered information."""
+    actions = _report(record).get("actions_taken")
+    return isinstance(actions, dict) and any(actions.values())
+
+
+def _matches(record: Dict, key: str, value) -> bool:
+    if key in EXACT_FILTERS:
+        return str(record.get(key, "")).strip().lower() == str(value).strip().lower()
+    if key == "viewed":
+        return bool(_report(record).get("viewed")) == bool(value)
+    if key == "user_acted":
+        return _user_acted(record) == bool(value)
+    if key == "min_risk":
+        return _risk(record) >= value
+    return _risk(record) <= value
+
+
+def filter_records(records: list, **criteria) -> list:
+    """Records that match every criterion given. A criterion set to None is ignored.
+    Text filters (not case sensitive): priority, threat_level, attack_type, review_status,
+    review_stage, assigned_reviewer, first_reviewed_by.
+    Other filters: viewed (True/False), user_acted (True/False), min_risk, max_risk."""
+    unknown = set(criteria) - set(EXACT_FILTERS) - set(OTHER_FILTERS)
+    if unknown:
+        raise ValueError(f"Unknown filter: {', '.join(sorted(unknown))}")
+    active = {k: v for k, v in criteria.items() if v is not None}
+    return [r for r in records
+            if isinstance(r, dict) and all(_matches(r, k, v) for k, v in active.items())]
+
+def find_record(records: list, report_id: str):
+    """The record with this report ID (any letter case), or None."""
+    wanted = str(report_id).strip().upper()
+    for r in records:
+        if isinstance(r, dict) and str(r.get("report_id", "")).upper() == wanted:
+            return r
+    return None
+
+
+def count_by(records: list, field: str) -> dict:
+    """How many records have each value of a field, biggest group first.
+    Example: count_by(records, "priority") -> {"Critical": 3, "Low Priority": 2}"""
+    counts = {}
+    for r in records:
+        if isinstance(r, dict):
+            value = str(r.get(field) or "(blank)")
+            counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: -item[1]))
