@@ -11,3 +11,8 @@ def add_audit_entry(record: Dict, action: str, reviewer_name: str, details: str 
         "action": action,
         "details": details
     }
+    record["audit_trail"].append(entry)
+    return record
+
+def get_audit_trail(record: Dict) -> List:
+    return record.get("audit_trail", [])
