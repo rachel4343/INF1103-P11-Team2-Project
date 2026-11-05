@@ -107,3 +107,40 @@ def search_records(records: list, text: str) -> list:
     subject, body, reason, links, attachments, attack type or reviewer. Empty text returns all."""
     words = str(text or "").lower().split()
     return [r for r in records if isinstance(r, dict) and all(w in _search_text(r) for w in words)]
+
+def _risk(record: Dict) -> float:
+    try:
+        return float(record.get("risk_score", 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _user_acted(record: Dict) -> bool:
+    """True if the employee clicked a link, opened an attachment or entered information."""
+    actions = _report(record).get("actions_taken")
+    return isinstance(actions, dict) and any(actions.values())
+
+
+def _matches(record: Dict, key: str, value) -> bool:
+    if key in EXACT_FILTERS:
+        return str(record.get(key, "")).strip().lower() == str(value).strip().lower()
+    if key == "viewed":
+        return bool(_report(record).get("viewed")) == bool(value)
+    if key == "user_acted":
+        return _user_acted(record) == bool(value)
+    if key == "min_risk":
+        return _risk(record) >= value
+    return _risk(record) <= value
+
+
+def filter_records(records: list, **criteria) -> list:
+    """Records that match every criterion given. A criterion set to None is ignored.
+    Text filters (not case sensitive): priority, threat_level, attack_type, review_status,
+    review_stage, assigned_reviewer, first_reviewed_by.
+    Other filters: viewed (True/False), user_acted (True/False), min_risk, max_risk."""
+    unknown = set(criteria) - set(EXACT_FILTERS) - set(OTHER_FILTERS)
+    if unknown:
+        raise ValueError(f"Unknown filter: {', '.join(sorted(unknown))}")
+    active = {k: v for k, v in criteria.items() if v is not None}
+    return [r for r in records
+            if isinstance(r, dict) and all(_matches(r, k, v) for k, v in active.items())]
