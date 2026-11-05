@@ -231,4 +231,340 @@ class LogicManager:
 
         return " + ".join(parts) + f" = {breakdown['total_score']}"
 
-   
+    # ==========================================
+    # 6. REPORT ID GENERATION
+    # ==========================================
+
+    @staticmethod
+    def next_report_id(records):
+
+        highest = 0
+
+        for record in records or []:
+
+            rid = (
+                record.get("report_id", "")
+                if isinstance(record, dict)
+                else ""
+            )
+
+            match = re.fullmatch(r"PG-(\d+)", str(rid))
+
+            if match:
+                highest = max(highest, int(match.group(1)))
+
+        return f"PG-{highest + 1:04d}"
+
+    # ==========================================
+    # 7. FINAL REPORT CREATION
+    # ==========================================
+
+    def build_final_record(
+        self,
+        report_id,
+        report,
+        ai_result,
+        ai_error=None
+    ):
+
+        valid = self.has_usable_ai_result(ai_result)
+
+        decision = self.apply_business_rules(report, ai_result)
+
+        return {
+            "report_id": report_id,
+            "report": report,
+            "ai_analysis": ai_result if valid else None,
+            "ai_error": "" if valid else (
+                ai_error or "AI result unavailable"
+            ),
+            "threat_level": (
+                ai_result["threat_level"] if valid else "unknown"
+            ),
+            "attack_type": (
+                (ai_result.get("attack_type") or "unknown")
+                if valid else "unknown"
+            ),
+            "indicator_count": (
+                self.count_indicators(ai_result) if valid else 0
+            ),
+            "risk_score": (
+                self.risk_score(ai_result) if valid else 0
+            ),
+            "risk_breakdown": (
+                self.risk_breakdown(ai_result)
+                if valid else "not available (no AI result)"
+            ),
+            "system_priority": decision["priority"],
+            "priority": decision["priority"],
+            "priority_overridden": False,
+            "rules_triggered": decision["rules_triggered"],
+            "review_status": "Pending Review",
+            "review_stage": "first_review",
+            "first_reviewed_by": "",
+            "report_outcome": "",
+            "risk_level": "",
+            "final_review_decision": "",
+            "assigned_reviewer": "",
+            "review_history": [],
+            "investigation_notes": []
+        }
+
+    # ==========================================
+    # 8. REVIEW MANAGEMENT
+    # ==========================================
+
+    def apply_review_update(self, record, updates):
+
+        errors = []
+
+        action = updates.get("review_action")
+        status = updates.get("review_status")
+        override = updates.get("priority_override")
+
+        note = str(updates.get("note") or "").strip()
+        reviewer = str(
+            updates.get("assigned_reviewer") or ""
+        ).strip()
+
+        rejection_reason = str(
+            updates.get("rejection_reason") or ""
+        ).strip()
+
+        if action not in (None, "first", "second"):
+            errors.append("Invalid review action.")
+
+        if status is not None and status not in self.REVIEW_STATUSES:
+            errors.append(f"Invalid review status: {status}")
+
+        if override is not None and override not in self.PRIORITIES:
+            errors.append(f"Invalid priority: {override}")
+
+        if len(note) > self.MAX_NOTE_LENGTH:
+            errors.append(
+                f"Note is too long (max {self.MAX_NOTE_LENGTH} characters)"
+            )
+
+        if len(reviewer) > self.MAX_REVIEWER_LENGTH:
+            errors.append(
+                f"Reviewer name is too long "
+                f"(max {self.MAX_REVIEWER_LENGTH} characters)"
+            )
+
+        if len(rejection_reason) > self.MAX_REJECTION_REASON_LENGTH:
+            errors.append(
+                f"Rejection reason is too long "
+                f"(max {self.MAX_REJECTION_REASON_LENGTH} characters)"
+            )
+
+        if action == "first":
+
+            first_reviewer = str(
+                updates.get("reviewer") or ""
+            ).strip()
+
+            outcome = updates.get("report_outcome")
+            risk_level = updates.get("risk_level")
+
+            if (
+                not first_reviewer
+                or len(first_reviewer) > self.MAX_REVIEWER_LENGTH
+            ):
+                errors.append(
+                    "Enter a reviewer name (max 60 characters)."
+                )
+
+            if not reviewer:
+                errors.append(
+                    "Assign the report to the next reviewer."
+                )
+
+            if outcome not in (
+                "Resolved (real scam)",
+                "False Positive (not a scam)"
+            ):
+                errors.append(
+                    "Choose Resolved or False Positive as the investigation outcome."
+                )
+
+            if risk_level not in ("Low", "High"):
+                errors.append("Choose Low or High as the risk level.")
+
+            if (
+                first_reviewer
+                and reviewer
+                and first_reviewer.casefold() == reviewer.casefold()
+            ):
+                errors.append(
+                    "The next reviewer must be a different person."
+                )
+
+        elif action == "second":
+
+            second_reviewer = str(
+                updates.get("reviewer") or ""
+            ).strip()
+
+            assigned_reviewer = str(
+                record.get("assigned_reviewer") or ""
+            ).strip()
+
+            decision = updates.get("approval_decision")
+
+            if record.get("review_stage", "first_review") != "awaiting_second_review":
+                errors.append(
+                    "This report is not waiting for a second-person review."
+                )
+
+            if (
+                not second_reviewer
+                or len(second_reviewer) > self.MAX_REVIEWER_LENGTH
+            ):
+                errors.append(
+                    "Enter a reviewer name (max 60 characters)."
+                )
+
+            elif second_reviewer.casefold() != assigned_reviewer.casefold():
+                errors.append(
+                    "Only the assigned reviewer can approve or reject this review."
+                )
+
+            if decision not in ("approve", "reject"):
+                errors.append("Choose approve or reject.")
+
+            if decision == "reject" and not rejection_reason:
+                errors.append("A rejection reason is required.")
+
+        if errors:
+            return record, errors
+
+        updated = copy.deepcopy(record)
+
+        if action == "first":
+
+            first_reviewer = str(updates["reviewer"]).strip()
+
+            updated["review_stage"] = "awaiting_second_review"
+            updated["review_status"] = "Pending Review"
+            updated["first_reviewed_by"] = first_reviewer
+            updated["report_outcome"] = updates["report_outcome"]
+            updated["risk_level"] = updates["risk_level"]
+            updated["final_review_decision"] = ""
+            updated["assigned_reviewer"] = reviewer
+
+            updated.setdefault("review_history", []).append({
+                "stage": "first",
+                "reviewer": first_reviewer,
+                "outcome": updates["report_outcome"],
+                "risk_level": updates["risk_level"],
+                "assigned_reviewer": reviewer
+            })
+
+        elif action == "second":
+
+            second_reviewer = str(updates["reviewer"]).strip()
+            decision = updates["approval_decision"]
+
+            updated.setdefault("review_history", []).append({
+                "stage": "second",
+                "reviewer": second_reviewer,
+                "decision": decision.title(),
+                "rejection_reason": rejection_reason
+            })
+
+            if decision == "approve":
+
+                updated["review_stage"] = "closed"
+                updated["review_status"] = "Done"
+                updated["final_review_decision"] = "Approved"
+
+            else:
+
+                updated["review_stage"] = "first_review"
+                updated["review_status"] = "Pending Review"
+                updated["first_reviewed_by"] = ""
+                updated["report_outcome"] = ""
+                updated["risk_level"] = ""
+                updated["final_review_decision"] = "Rejected"
+                updated["assigned_reviewer"] = ""
+
+        elif status is not None:
+
+            updated["review_status"] = status
+
+        if action is None and override is not None:
+
+            updated["priority"] = override
+
+            updated["priority_overridden"] = (
+                override != updated.get("system_priority")
+            )
+
+        if note:
+            updated.setdefault("investigation_notes", []).append(note)
+
+        if action is None and reviewer:
+            updated["assigned_reviewer"] = reviewer
+
+        return updated, []
+
+    # ==========================================
+    # 9. LOOKUP AND SORTING
+    # ==========================================
+
+    @staticmethod
+    def find_record_index(records, report_id):
+
+        wanted = (report_id or "").strip().upper()
+
+        for index, record in enumerate(records or []):
+
+            if (
+                isinstance(record, dict)
+                and str(record.get("report_id", "")).upper() == wanted
+            ):
+                return index
+
+        return -1
+
+    @classmethod
+    def sort_records_by_priority(cls, records):
+
+        return sorted(
+            records,
+            key=lambda record: (
+                -cls.PRIORITY_RANK.get(record.get("priority"), 0),
+                -record.get("risk_score", 0),
+                str(record.get("report_id", ""))
+            )
+        )
+
+    # ==========================================
+    # 10. PASSWORD VERIFICATION
+    # ==========================================
+
+    @classmethod
+    def hash_passcode(cls, password):
+
+        return hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            cls.IT_PASSWORD_SALT.encode("utf-8"),
+            cls.IT_PASSWORD_ITERATIONS
+        ).hex()
+
+    @classmethod
+    def verify_it_password(cls, entered):
+
+        override = os.environ.get("phishguard_it_password")
+
+        expected = (
+            cls.hash_passcode(override)
+            if override
+            else cls.IT_PASSWORD_HASH
+        )
+
+        return hmac.compare_digest(
+            cls.hash_passcode(entered or ""),
+            expected
+        )
