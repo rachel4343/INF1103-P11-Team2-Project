@@ -147,3 +147,26 @@ class MediumThreatRule(PriorityRule):
 
         return None
 
+
+class LowThreatRule(PriorityRule):
+    """
+    Rule 5: Low threat can only be dismissed with very high confidence
+    and no suspicious link.
+    """
+
+    def evaluate(self, ai_result: Dict) -> Optional[Tuple[str, str]]:
+
+        if (
+            ai_result["threat_level"] == "low"
+            and ai_result["confidence"] >= CONF_LOW
+            and not ai_result["suspicious_link"]
+        ):
+            reason = (
+                f"{PRIORITY_LOW}, because the AI rated the threat low "
+                f"({ai_result['confidence']:.0%} sure) "
+                f"and found no suspicious link"
+            )
+
+            return PRIORITY_LOW, reason
+
+        return None
