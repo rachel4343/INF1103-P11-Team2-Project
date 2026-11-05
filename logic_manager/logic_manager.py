@@ -13,7 +13,7 @@
 # 7. Final Report Creation: Builds the final report record with all relevant information, including AI analysis, priority, and review status.
 # 8. Review Management: Applies updates to the report based on reviewer actions, including first and second reviews, priority overrides, and notes.
 # 9. Lookup and Sorting: Methods to find a report by ID and sort records by priority, risk score, and report ID.
-# 10. Password Verification: Methods to hash and verify the IT password for secure access to the system.
+# 10. Password Verification: Methods to hash and verify the IT password for secure access to the systems.
 
 
 import copy
