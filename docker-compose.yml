@@ -5,5 +5,9 @@ services:
     # Needed so the menus, input() and the hidden password prompts work.
     stdin_open: true
     tty: true
+    # Reports are saved next to the working directory, so work inside the
+    # mounted folder and they survive after the container stops.
+    working_dir: /app/data
+    command: python /app/phishing_guard_main.py
 
       
