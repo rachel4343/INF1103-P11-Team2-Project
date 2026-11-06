@@ -16,7 +16,7 @@ from .priority_rule import PriorityRule
 
 
 # Priority labels
-PRIORITY_CRITICAL = "Critical"
+
 PRIORITY_URGENT = "Urgent Security Review"
 PRIORITY_HIGH = "High-Priority Review"
 PRIORITY_SECURITY = "Security Review"
@@ -24,8 +24,8 @@ PRIORITY_LOW = "Low Priority"
 
 
 # Confidence thresholds
-CONF_CRITICAL = 0.85
-CONF_CRITICAL_CORROBORATED = 0.75
+
+
 
 CONF_CREDENTIAL_LINK = 0.80
 CONF_CREDENTIAL_LINK_CORROBORATED = 0.70
@@ -37,26 +37,7 @@ CONF_LOW = 0.90
 
 CORROBORATION_MIN_INDICATORS = 3
 
-class CriticalThreatRule(PriorityRule):
-    """Rule 1: Critical threat with sufficient AI confidence."""
 
-    def evaluate(self, ai_result: Dict) -> Optional[Tuple[str, str]]:
-
-        gate = self.confidence_gate(
-            ai_result,
-            CONF_CRITICAL,
-            CONF_CRITICAL_CORROBORATED
-        )
-
-        if ai_result["threat_level"] == "critical" and gate:
-            reason = (
-                f"{PRIORITY_CRITICAL}, because the AI rated the "
-                f"threat critical ({gate})"
-            )
-
-            return PRIORITY_CRITICAL, reason
-
-        return None
 
 
 class CredentialLinkRule(PriorityRule):
