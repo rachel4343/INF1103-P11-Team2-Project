@@ -2,5 +2,8 @@ services:
   phishguard:
     build: .
     image: phishguard
-  
+    # Needed so the menus, input() and the hidden password prompts work.
+    stdin_open: true
+    tty: true
+
       
