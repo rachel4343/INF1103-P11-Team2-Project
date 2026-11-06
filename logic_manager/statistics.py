@@ -11,3 +11,9 @@ def generate_statistics(records: List) -> Dict:
         "risk_distribution": {"low": 0, "medium": 0, "high": 0, "critical": 0}
     
     }
+
+    for rec in records:
+        stage = rec.get("review_stage", "Pending Review")
+        threat = rec.get("threat_level", "low")
+
+        
