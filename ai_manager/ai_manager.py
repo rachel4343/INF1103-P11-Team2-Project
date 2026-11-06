@@ -54,3 +54,9 @@ def analyze_email(self, report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         
         except Exception as e:
             return (None, f"AI processing error: {str(e)}")
+@staticmethod
+def _build_explanation(signs: Dict[str, bool]) -> str:
+        detected = [k.replace("_", " ") for k, v in signs.items() if v]
+        if detected:
+            return f"Flagged indicators: {', '.join(detected)}."
+        return "No suspicious indicators detected."
