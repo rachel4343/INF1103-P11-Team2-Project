@@ -11,9 +11,12 @@ from typing import Dict, Optional, Tuple
 import requests
 
 import ai_manager
-import data_manager
+from data_manager import DataManager, JsonRecordStore
 import io_manager
-import logic_manager
+from logic_manager.logic_manager import LogicManager
+
+logic_manager = LogicManager()
+data_manager = DataManager(JsonRecordStore())
 
 
 
@@ -54,6 +57,11 @@ def show_updated_menu() -> int:
     io_manager.display_message("  4. Find a Report (Search & Filter)")
     io_manager.display_message("  5. Exit")
     return io_manager.prompt_menu_number(5)
+
+def show_data_warnings() -> None:
+    """Show anything the Data Manager wants the user to know (unreadable file, failed save)."""
+    for message in data_manager.take_warnings():
+        io_manager.display_error(message)
 
 def check_it_password() -> bool:
     """Hidden typing, 3 attempts (handled by the I/O Manager)."""
@@ -164,12 +172,22 @@ def handle_submit() -> None:
     report_id = logic_manager.next_report_id(records)
     record = logic_manager.build_final_record(report_id, report, ai_result, ai_error)
 
-       
-    records.append(record)
-    data_manager.save_records(records)
+    outcome = data_manager.add_record(record)
+    show_data_warnings()
+
+    if outcome["duplicate"]:
+        io_manager.display_message("\n  Duplicate report - already saved, not added again.")
+        return
+    if not outcome["saved"]:
+        io_manager.display_error("The report could not be saved.")
+        return
 
     io_manager.display_assessment(record)
     io_manager.display_message("\n  Saved! Status: Pending Review")
+    if outcome["same_scam_before"]:
+        io_manager.display_message(
+            f"  Note: this scam was reported {outcome['same_scam_before']} time(s) before"
+        )
 
 
 def review_report(records: list, idx: int) -> None:
@@ -188,7 +206,10 @@ def review_report(records: list, idx: int) -> None:
         return
 
     records[idx] = updated
-    data_manager.save_records(records)
+    if not data_manager.save_records(records):
+        show_data_warnings()
+        io_manager.display_error("The review could not be saved.")
+        return
     if updated.get("review_stage") == "awaiting_second_review":
         io_manager.display_message(
             f"\n  First review saved. Waiting for {updated['assigned_reviewer']} to approve or reject."
@@ -295,6 +316,7 @@ def main():
     try:
         ask_for_api_key()
         while True:
+            show_data_warnings()
             choice = show_updated_menu() 
             
             if choice == 1:
