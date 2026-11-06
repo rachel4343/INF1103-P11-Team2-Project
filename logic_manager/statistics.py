@@ -26,3 +26,8 @@ def generate_statistics(records: List) -> Dict:
             else:
                 stats["close_rejected"] += 1
 
+        if threat in stats["risk_distribution"]:
+            stats["risk_distribution"][threat] += 1
+
+    return stats
+
