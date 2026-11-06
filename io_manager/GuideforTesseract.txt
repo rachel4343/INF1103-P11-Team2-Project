@@ -1,0 +1,13 @@
+Vendor Folder (Tesseract OCR)
+
+The 'vendor' folder contains the Tesseract OCR files needed to extract text from email screenshots.
+
+Steps to set up Tesseract:
+1. Ensure the 'vendor/tesseract/windows' folder is inside the project.
+2. Open the VS Code PowerShell terminal.
+3. Run the following command:
+		$env:Path += ";$(Resolve-Path .\vendor\tesseract\windows)"
+4. Check that Tesseract works:
+		tesseract --version
+5. Install the Python libraries:
+		py -m pip install Pillow pytesseract
