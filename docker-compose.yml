@@ -9,5 +9,9 @@ services:
     # mounted folder and they survive after the container stops.
     working_dir: /app/data
     command: python /app/phishing_guard_main.py
-
+    environment:
+      # Passed through from your own machine. Never write the key in this file.
+      - GEMINI_API_KEY
+    volumes:
+      - ./data:/app/data
       
