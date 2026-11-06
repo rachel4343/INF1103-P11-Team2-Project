@@ -16,4 +16,13 @@ def generate_statistics(records: List) -> Dict:
         stage = rec.get("review_stage", "Pending Review")
         threat = rec.get("threat_level", "low")
 
-        
+        if stage == "Pending Review":
+            stats["pending"] += 1
+        elif stage == "Awaiting Second Review":
+            stats["awaiting_second"] += 1
+        elif stage == "closed":
+            if rec.get("final_outcome") == "approved":
+                stats["close_approved"] += 1
+            else:
+                stats["close_rejected"] += 1
+
