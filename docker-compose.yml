@@ -1,0 +1,6 @@
+services:
+  phishguard:
+    build: .
+    image: phishguard
+  
+      
