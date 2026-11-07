@@ -6,20 +6,20 @@ Legacy imports are re-exported below to keep existing team scripts/tests working
 from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
-from io_components.io_config import (MAX_FIELD_LENGTH, MAX_BODY_LENGTH, MAX_URL_LENGTH,
+from .io_config import (MAX_FIELD_LENGTH, MAX_BODY_LENGTH, MAX_URL_LENGTH,
                                      BODY_END_MARKER, LINE_WIDTH, MAX_NOTE, MAX_NAME,
                                      MAX_IMAGE, MAX_FILE, INDICATORS)
-from io_components.io_helpers import clean, short
-from io_components.privacy_filter import PrivacyFilter
-from io_components.io_channel import IOChannel
-from io_components.console_channel import ConsoleChannel
-from io_components.scripted_channel import ScriptedChannel
-from io_components.input_validator import InputValidator
-from io_components.extraction_error import ExtractionError
-from io_components.email_extractor import EmailExtractor
-from io_components.keyword_checker import KeywordChecker
-from io_components.attachment_reader import AttachmentReader
-from io_components.menu_choice import MenuChoice
+from .io_helpers import clean, short
+from .privacy_filter import PrivacyFilter
+from .io_channel import IOChannel
+from .console_channel import ConsoleChannel
+from .scripted_channel import ScriptedChannel
+from .input_validator import InputValidator
+from .extraction_error import ExtractionError
+from .email_extractor import EmailExtractor
+from .keyword_checker import KeywordChecker
+from .attachment_reader import AttachmentReader
+from .menu_choice import MenuChoice
 
 class IOManager:
     """The single I/O entry point for main.py; all report fields stay compatible."""
