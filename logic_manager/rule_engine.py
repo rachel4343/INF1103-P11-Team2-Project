@@ -7,13 +7,11 @@
 from typing import Dict, List, Optional, Tuple
 
 from .priority_rule import PriorityRule
-from .priority_rules import (
-    CriticalThreatRule,
-    CredentialLinkRule,
-    HighThreatRule,
-    MediumThreatRule,
-    LowThreatRule,
-)
+from .critical_threat_rule import CriticalThreatRule
+from .credential_link_rule import CredentialLinkRule
+from .high_threat_rule import HighThreatRule
+from .medium_threat_rule import MediumThreatRule
+from .low_threat_rule import LowThreatRule
 
 
 # Higher number means higher priority.
