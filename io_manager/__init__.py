@@ -25,3 +25,19 @@ from .privacy_filter import PrivacyFilter
 # File & Attachment Handling
 from .attachment_reader import AttachmentReader
 from .image_evidence_store import ImageEvidenceStore
+
+# OCR & Email Extraction
+from .extraction_error import ExtractionError
+from .email_extractor import EmailExtractor
+from .email_text_parser import EmailTextParser
+from .tesseract_extractor import TesseractExtractor
+from .ocr_extractor import EmailTextParser, TesseractExtractor  # backward compat
+
+# Keyword Checking
+from .keyword_checker import KeywordChecker
+
+# Menu System
+from .menu_choice import MenuChoice
+
+# MAIN Entry Point
+from .io_manager import IOManager
