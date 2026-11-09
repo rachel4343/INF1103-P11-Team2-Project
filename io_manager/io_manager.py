@@ -34,7 +34,7 @@ class IOManager:
         self._keywords = keyword_checker or KeywordChecker()
         self._evidence_store = evidence_store
         if extractor is None:
-            from ocr_extractor import TesseractExtractor
+            from .ocr_extractor import TesseractExtractor
             extractor = TesseractExtractor()
         # Privacy-first: do not accept remote/vision extractors in screenshot flow.
         # No image bytes are sent to Gemini from the I/O layer.
