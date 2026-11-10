@@ -128,3 +128,10 @@ Respond with:
 
         except Exception as e:
             return None, f"API error: {str(e)}"
+
+class AnalysisOrchestrator:
+    """Orchestrates AI analysis — tries Gemini first, falls back to offline rules."""
+
+    def __init__(self, gemini_client: GeminiAPIClient, ai_manager: AIManager):
+        self.gemini = gemini_client
+        self.ai_mgr = ai_manager
