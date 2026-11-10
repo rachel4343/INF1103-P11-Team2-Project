@@ -156,3 +156,13 @@ class ITSecurityPanel:
         self.data_mgr = data_mgr
         self.logic_mgr = logic_mgr
         self._password = IT_PASSWORD
+
+    def authenticate(self) -> bool:
+        """Verify IT personnel credentials."""
+        display_message("\n  IT Security Login")
+        entered = getpass.getpass("  Enter password: ").strip()
+        if entered == self._password:
+            display_message("  ✅ Login successful!\n")
+            return True
+        display_message("  ❌ Incorrect password.\n")
+        return False
