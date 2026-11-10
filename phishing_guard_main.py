@@ -298,4 +298,13 @@ class PhishGuardApp:
         self.gemini = GeminiAPIClient(API_URL, API_KEY)
         self.analyzer = AnalysisOrchestrator(self.gemini, self.ai_mgr)
         self.it_panel = ITSecurityPanel(self.data_mgr, self.logic_mgr)
-        
+
+    def show_startup_message(self):
+        """Display API status at launch."""
+        if self.gemini.enabled:
+            display_message("  Gemini API analysis — ON")
+        else:
+            display_message("   No API key — using offline analysis only")
+            display_message("   Set: $env:GEMINI_API_KEY='your-key'")
+
+
