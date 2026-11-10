@@ -25,7 +25,7 @@ class PersonnelReport:
                 "active": person.get("active", True),
                 "open_assigned_reports": self._open_assigned(records, name),
                 "first_reviews_done": self._reviews_done(records, name, "first"),
-                "second_reviews_done": self._reviews_done(records, name, "second    ")
+                "second_reviews_done": self._reviews_done(records, name, "second")
             })
         return {
             "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
