@@ -406,3 +406,16 @@ class IOManager:
     def pause(self, text="\nPress Enter to continue...") -> None:
         self._channel.read(text)
 
+# ──────────────────────────────────────────────
+#  AI KEYWORD DISPLAY
+# ──────────────────────────────────────────────
+def display_ai_keyword_result(result: dict) -> None:
+    """Show AI-powered deep scan results."""
+    print(f"\n  AI DEEP SCAN RESULT")
+    print(f"  Threat Level: {result.get('threat_level', 'unknown').upper()}")
+    print(f"  Confidence:   {result.get('confidence', 0):.0%}")
+    print(f"  Attack Type:  {result.get('attack_type', 'none')}")
+    print(f"  Explanation:  {result.get('explanation', '')}")
+    print(f"  Action:       {result.get('recommended_action', '')}")
+
+
