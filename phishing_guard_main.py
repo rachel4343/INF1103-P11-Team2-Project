@@ -285,3 +285,17 @@ class ITSecurityPanel:
                 continue
 
             self._review_single_report(records, idx)
+
+class PhishGuardApp:
+    """Main Application — coordinates all subsystems."""
+
+    def __init__(self):
+        # Initialise all subsystems
+        self.store = JsonRecordStore(DATA_FILE)
+        self.data_mgr = DataManager(self.store)
+        self.logic_mgr = LogicManager()
+        self.ai_mgr = AIManager()
+        self.gemini = GeminiAPIClient(API_URL, API_KEY)
+        self.analyzer = AnalysisOrchestrator(self.gemini, self.ai_mgr)
+        self.it_panel = ITSecurityPanel(self.data_mgr, self.logic_mgr)
+        
