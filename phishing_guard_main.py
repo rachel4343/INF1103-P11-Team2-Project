@@ -218,4 +218,12 @@ class ITSecurityPanel:
             display_error("Report no longer available.")
             return
         self._review_single_report(records, idx)
-        
+
+
+    def search_workflow(self):
+        """Search & filter reports then review."""
+        records = self.data_mgr.load_records()
+        if not records:
+            display_message("  No reports submitted yet.")
+            input("  Press Enter to return...")
+            return
