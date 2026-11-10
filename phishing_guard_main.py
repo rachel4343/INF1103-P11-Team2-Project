@@ -383,3 +383,10 @@ class PhishGuardApp:
             else:
                 display_message("  Invalid choice — enter 1–5.")
 
+# ── ENTRY POINT ───────────────────────────────
+if __name__ == "__main__":
+    try:
+        app = PhishGuardApp()
+        app.run()
+    except (EOFError, KeyboardInterrupt):
+        display_message("\n\n  Exiting PhishGuard. Goodbye!")
