@@ -239,3 +239,27 @@ class ITSecurityPanel:
                 "Back"
             ],
         )
+
+        if choice == "Back":
+            return
+        elif choice == "Find by ID or keywords":
+            text = prompt_text("Report ID, sender, subject or words")
+            exact = self.data_mgr.find_record(records, text)
+            found = [exact] if exact else self.data_mgr.search_records(records, text)
+        elif choice == "Filter by priority":
+            val = prompt_choice("Priority:", list(PRIORITIES))
+            found = self.data_mgr.filter_records(records, priority=val)
+        elif choice == "Filter by threat level":
+            val = prompt_choice("Threat level:", list(THREAT_LEVELS) + ["unknown"])
+            found = self.data_mgr.filter_records(records, threat_level=val)
+        elif choice == "Filter by review status":
+            val = prompt_choice("Review status:", list(REVIEW_STATUSES))
+            found = self.data_mgr.filter_records(records, review_status=val)
+        else:
+            low = prompt_text("Lowest risk (Enter = 0)", required=False, validator=str.isdigit) or "0"
+            high = prompt_text("Highest risk (Enter = 100)", required=False, validator=str.isdigit) or "100"
+            found = self.data_mgr.filter_records(
+                records, min_risk=int(low), max_risk=int(high)
+            )
+
+        self._open_results(records, found)
