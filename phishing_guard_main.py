@@ -57,3 +57,16 @@ class GeminiAPIClient:
                 text = text.split("\n", 1)[1]
             text = text.rsplit("```", 1)[0]
         return text.strip()
+
+    def build_prompt(self, report: Dict) -> str:
+        """Construct the analysis prompt from report data."""
+        if not report.get("viewed", True):
+            subject = "NOT VIEWED"
+            body = f"Reason: {report.get('reason_for_suspicion', '')}"
+        else:
+            subject = str(report.get("subject") or "")
+            body = str(report.get("body") or "")
+
+        sender = f"{report.get('sender_name', '')} {report.get('sender_email', '')}"
+
+        return f"""Analyze this email for phishing. Return ONLY valid JSON.
