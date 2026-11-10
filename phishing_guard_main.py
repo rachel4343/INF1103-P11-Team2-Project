@@ -317,3 +317,15 @@ class PhishGuardApp:
         display_message("  4. Find a Report (Search & Filter)")
         display_message("  5. Exit")
         return prompt_menu_number(5)
+
+    def _submit_report(self):
+        """Handle new report submission flow."""
+        report = collect_report_input()
+        display_message("\n  Analysing report...")
+
+        ai_result, ai_error = self.analyzer.analyze(report)
+        records = self.data_mgr.load_records()
+        report_id = self.logic_mgr.next_report_id(records)
+        record = self.logic_mgr.build_final_record(report_id, report, ai_result, ai_error)
+
+        outcome = self.data_mgr.add_record(record)
