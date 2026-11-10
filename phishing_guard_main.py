@@ -329,3 +329,19 @@ class PhishGuardApp:
         record = self.logic_mgr.build_final_record(report_id, report, ai_result, ai_error)
 
         outcome = self.data_mgr.add_record(record)
+
+        for warning in self.store.take_warnings():
+            display_message(f"   {warning}")
+
+        if outcome.get("duplicate"):
+            display_message("   Duplicate — already saved.")
+            return
+        if not outcome.get("saved"):
+            display_error("  Failed to save report.")
+            return
+
+        if outcome.get("same_scam_before", 0) > 0:
+            display_message(f"   Similar scam reported {outcome['same_scam_before']} time(s) before.")
+
+        display_assessment(record)
+        display_message(f"\n  Saved! Report ID: {report_id}")
