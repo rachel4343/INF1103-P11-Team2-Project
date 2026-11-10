@@ -23,7 +23,7 @@ class PersonnelSearcher:
         active = {key: value for key, value in criteria.items() if value is not None}
         return [person for person in personnel
                 if isinstance(person, dict)
-                and all(self.matches(person, key, value) for key, value in active.items())]
+                and all(self._matches(person, key, value) for key, value in active.items())]
 
     @staticmethod
     def _matches(person: Dict, key: str, value) -> bool:
