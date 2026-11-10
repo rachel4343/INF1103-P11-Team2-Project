@@ -147,3 +147,12 @@ class AnalysisOrchestrator:
         if result:
             result["analysis_mode"] = "offline rules"
         return result, err
+
+class ITSecurityPanel:
+    """Handles IT login, review workflow and report management."""
+
+    def __init__(self, data_mgr: DataManager, logic_mgr: LogicManager):
+        self.data_mgr = data_mgr
+        self.logic_mgr = logic_mgr
+        self._password = IT_PASSWORD
+        
