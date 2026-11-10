@@ -35,6 +35,7 @@ from .ocr_extractor import EmailTextParser, TesseractExtractor  # backward compa
 
 # Keyword Checking
 from .keyword_checker import KeywordChecker
+from .io_manager import display_keyword_results, display_ai_keyword_result
 
 # Menu System
 from .menu_choice import MenuChoice
