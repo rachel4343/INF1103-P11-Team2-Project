@@ -88,3 +88,10 @@ Respond with:
   "recommended_action": "one short sentence",
   "explanation": "Brief reason"
 }}"""
+
+    def analyze(self, report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+        """Call API — returns (result_dict, None) or (None, error_message)."""
+        if not self.enabled:
+            return None, "API key not set"
+
+        prompt = self.build_prompt(report)
