@@ -354,3 +354,12 @@ class PhishGuardApp:
             return
         results = self.logic_mgr.scan_keywords(text)
         display_keyword_results(results)
+
+    def run(self):
+        """Application main loop."""
+        print("=" * 55)
+        print("  PHISHGUARD — AI-Powered Phishing Detector")
+        print("         INF1103 Phase 2 — OOP Refactored")
+        print("=" * 55)
+
+        self.show_startup_message()
