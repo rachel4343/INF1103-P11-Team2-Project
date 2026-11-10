@@ -39,3 +39,11 @@ from logic_manager import (
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DATA_FILE = "phishguard_reports.json"
+
+class GeminiAPIClient:
+    """Handles communication with Google Gemini API — isolated component."""
+
+    def __init__(self, api_url: str, api_key: str):
+        self.api_url = api_url
+        self.api_key = api_key
+        self.enabled = bool(api_key)
