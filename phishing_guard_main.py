@@ -307,4 +307,13 @@ class PhishGuardApp:
             display_message("   No API key — using offline analysis only")
             display_message("   Set: $env:GEMINI_API_KEY='your-key'")
 
-
+    @staticmethod
+    def _show_main_menu() -> int:
+        """Display main menu & get selection."""
+        display_header("PHISHGUARD — Main Menu")
+        display_message("  1. Submit Email Report (Employee / User)")
+        display_message("  2. IT Security Personnel (Review & Manage)")
+        display_message("  3. Keyword Checker Tool")
+        display_message("  4. Find a Report (Search & Filter)")
+        display_message("  5. Exit")
+        return prompt_menu_number(5)
