@@ -135,3 +135,15 @@ class AnalysisOrchestrator:
     def __init__(self, gemini_client: GeminiAPIClient, ai_manager: AIManager):
         self.gemini = gemini_client
         self.ai_mgr = ai_manager
+
+    def analyze(self, report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
+        """Dual-path analysis: cloud → local fallback."""
+        result, err = self.gemini.analyze(report)
+        if result:
+            return result, None
+
+        display_message(f"    {err} — using offline analysis")
+        result, err = self.ai_mgr.analyze_email(report)
+        if result:
+            result["analysis_mode"] = "offline rules"
+        return result, err
