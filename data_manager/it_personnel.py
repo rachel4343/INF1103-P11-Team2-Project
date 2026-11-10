@@ -5,14 +5,19 @@ from .personnel_searcher import PersonnelSearcher
 from .record_store import RecordStore
 
 class ITPersonnel:
+    """ Manage IT staff records, assignments and review statistics."""
 
-    def __init__(self, personnel: Option[List[Dict]] = None, store: Optional[RecordStore] = None):
-        self.store = store
-        start= personnel if personnel is not None else (store.load_all() if store is not None else [])
+    def __init__(self, personnel: Optional[List[Dict]] = None, store: Optional[RecordStore] = None):
+        self.__store = store
+        if personnel is not None:
+            start = personnel
+        elif store is not None:
+            start = store.load_all()
+        else:
+            start = []
         self.__personnel = [dict(person) for person in start if isinstance(person, dict)]
         self.__searcher = PersonnelSearcher()
         self.__report = PersonnelReport()
-
     @property
     def personnel(self) -> List[Dict]:
         return list(self.__personnel)
