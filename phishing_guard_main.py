@@ -162,7 +162,15 @@ class ITSecurityPanel:
         display_message("\n  IT Security Login")
         entered = getpass.getpass("  Enter password: ").strip()
         if entered == self._password:
-            display_message("  ✅ Login successful!\n")
+            display_message("  Login successful!\n")
             return True
-        display_message("  ❌ Incorrect password.\n")
+        display_message("  Incorrect password.\n")
         return False
+
+    def _review_single_report(self, records: list, idx: int) -> bool:
+        """Process one report review — returns True if saved."""
+        display_record_detail(records[idx])
+
+        if records[idx].get("review_stage") == "closed":
+            display_message("  This report is finalised — no changes allowed.")
+            return False
