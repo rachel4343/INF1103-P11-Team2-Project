@@ -174,3 +174,18 @@ class ITSecurityPanel:
         if records[idx].get("review_stage") == "closed":
             display_message("  This report is finalised — no changes allowed.")
             return False
+
+        updates = collect_review_update(records[idx])
+        updated, errors = self.logic_mgr.apply_review_update(records[idx], updates)
+
+        if errors:
+            for err in errors:
+                display_error(err)
+            return False
+
+        records[idx] = updated
+        if not self.data_mgr.save_records(records):
+            for warning in self.data_mgr.take_warnings():
+                display_error(warning)
+            display_error("Review could not be saved.")
+            return False
