@@ -263,3 +263,25 @@ class ITSecurityPanel:
             )
 
         self._open_results(records, found)
+
+    def main_menu(self):
+        """IT panel loop — shown after login."""
+        while True:
+            records = self.data_mgr.load_records()
+            display_record_list(self.logic_mgr.sort_records_by_priority(records))
+
+            if not records:
+                display_message("  No reports submitted yet.\n")
+                input("  Press Enter to return...")
+                return
+
+            report_id = collect_record_id(records)
+            if report_id is None:
+                return
+
+            idx = self.logic_mgr.find_record_index(records, report_id)
+            if idx < 0:
+                display_error("Report not found.")
+                continue
+
+            self._review_single_report(records, idx)
