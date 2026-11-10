@@ -345,3 +345,12 @@ class PhishGuardApp:
 
         display_assessment(record)
         display_message(f"\n  Saved! Report ID: {report_id}")
+
+    def _keyword_check(self):
+        """Offline keyword scanner flow."""
+        text = collect_keyword_text()
+        if not text:
+            display_message("  No text entered.")
+            return
+        results = self.logic_mgr.scan_keywords(text)
+        display_keyword_results(results)
