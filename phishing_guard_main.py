@@ -189,3 +189,15 @@ class ITSecurityPanel:
                 display_error(warning)
             display_error("Review could not be saved.")
             return False
+
+        # Status feedback
+        stage = updated.get("review_stage")
+        if stage == "awaiting_second_review":
+            display_message(f" First review saved — waiting for {updated.get('assigned_reviewer')}")
+        elif stage == "closed":
+            display_message("  Finalised & Locked — no further changes.")
+        else:
+            display_message("  Sent back for reassessment.")
+        return True
+
+    
