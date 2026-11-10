@@ -346,14 +346,29 @@ class PhishGuardApp:
         display_assessment(record)
         display_message(f"\n  Saved! Report ID: {report_id}")
 
-    def _keyword_check(self):
-        """Offline keyword scanner flow."""
-        text = collect_keyword_text()
-        if not text:
-            display_message("  No text entered.")
-            return
-        results = self.logic_mgr.scan_keywords(text)
-        display_keyword_results(results)
+def _keyword_checker_menu(self):
+    """Sub-menu: choose offline quick scan or AI deep scan."""
+    while True:
+        print("\n" + "─" * 50)
+        print("  KEYWORD CHECKER — Select Scan Type")
+        print("─" * 50)
+        print("  1.  Quick Scan  — Offline, instant, no internet needed")
+        print("  2.  Deep Scan   — AI-powered, understands context & meaning")
+        print("  3.  Back to Main Menu")
+        print("─" * 50)
+        
+        choice = input("\n  Enter your choice: ").strip()
+        
+        if choice == "1":
+            self._quick_keyword_scan()
+        elif choice == "2":
+            self._ai_keyword_scan()
+        elif choice == "3":
+            display_message("  Returning to Main Menu...")
+            break
+        else:
+            display_message("  Invalid choice — enter 1–3.")
+
 
     def run(self):
         """Application main loop."""
