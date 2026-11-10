@@ -47,3 +47,13 @@ class GeminiAPIClient:
         self.api_url = api_url
         self.api_key = api_key
         self.enabled = bool(api_key)
+
+    @staticmethod
+    def _extract_json(text: str) -> str:
+        """Remove markdown code fence if present."""
+        text = text.strip()
+        if text.startswith("```"):
+            if "\n" in text:
+                text = text.split("\n", 1)[1]
+            text = text.rsplit("```", 1)[0]
+        return text.strip()
