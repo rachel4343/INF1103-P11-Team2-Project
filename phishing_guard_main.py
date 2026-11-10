@@ -200,4 +200,22 @@ class ITSecurityPanel:
             display_message("  Sent back for reassessment.")
         return True
 
-    
+    def _open_results(self, records: list, found: list):
+        """Handle search results — single or multiple matches."""
+        if not found:
+            display_error("No reports match that.")
+            return
+        if len(found) == 1:
+            report_id = found[0].get("report_id", "")
+        else:
+            display_record_list(found)
+            report_id = collect_record_id(found)
+            if report_id is None:
+                return
+
+        idx = self.logic_mgr.find_record_index(records, report_id)
+        if idx < 0:
+            display_error("Report no longer available.")
+            return
+        self._review_single_report(records, idx)
+        
