@@ -38,6 +38,7 @@ from logic_manager import (
 # ── Configuration ─────────────────────────────
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
+IT_PASSWORD = "PhishGuard#2026"
 DATA_FILE = "phishguard_reports.json"
 
 class GeminiAPIClient:
@@ -155,4 +156,3 @@ class ITSecurityPanel:
         self.data_mgr = data_mgr
         self.logic_mgr = logic_mgr
         self._password = IT_PASSWORD
-        
