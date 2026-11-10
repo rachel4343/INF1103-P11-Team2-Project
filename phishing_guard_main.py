@@ -20,6 +20,7 @@ from io_manager import (
     display_record_list,
     display_record_detail,
     display_keyword_results,
+    display_ai_keyword_results,
     prompt_menu_number,
     prompt_choice,
     prompt_text,
@@ -29,6 +30,7 @@ from io_manager import (
     collect_keyword_text,
     prompt_it_password,
 )
+from io_manager.keyword_checker import KeywordChecker
 from logic_manager import (
     LogicManager,
     REVIEW_STATUSES,
