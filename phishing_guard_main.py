@@ -388,7 +388,7 @@ def _keyword_checker_menu(self):
                 if self.it_panel.authenticate():
                     self.it_panel.main_menu()
             elif choice == 3:
-                self._keyword_check()
+                self._keyword_checker_menu()
             elif choice == 4:
                 if self.it_panel.authenticate():
                     self.it_panel.search_workflow()
