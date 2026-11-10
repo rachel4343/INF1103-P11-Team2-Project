@@ -95,3 +95,36 @@ Respond with:
             return None, "API key not set"
 
         prompt = self.build_prompt(report)
+
+        try:
+            resp = requests.post(
+                self.api_url,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.api_key
+                },
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                        "responseMimeType": "application/json",
+                    },
+                },
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                return None, f"API Error {resp.status_code}"
+
+            data = resp.json()
+            raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            result = json.loads(self._extract_json(raw_text))
+
+            # Normalize fields
+            result.setdefault("attack_type", "unknown")
+            result.setdefault("recommended_action", "")
+            result.setdefault("explanation", "")
+            result["analysis_mode"] = "Gemini AI"
+            return result, None
+
+        except Exception as e:
+            return None, f"API error: {str(e)}"
