@@ -227,3 +227,15 @@ class ITSecurityPanel:
             display_message("  No reports submitted yet.")
             input("  Press Enter to return...")
             return
+
+        choice = prompt_choice(
+            "\nFind a report:",
+            [
+                "Find by ID or keywords",
+                "Filter by priority",
+                "Filter by threat level",
+                "Filter by review status",
+                "Filter by risk score",
+                "Back"
+            ],
+        )
