@@ -35,3 +35,7 @@ from logic_manager import (
     PRIORITIES,
     THREAT_LEVELS,
 )
+# ── Configuration ─────────────────────────────
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
+DATA_FILE = "phishguard_reports.json"
