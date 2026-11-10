@@ -363,3 +363,23 @@ class PhishGuardApp:
         print("=" * 55)
 
         self.show_startup_message()
+
+        while True:
+            choice = self._show_main_menu()
+
+            if choice == 1:
+                self._submit_report()
+            elif choice == 2:
+                if self.it_panel.authenticate():
+                    self.it_panel.main_menu()
+            elif choice == 3:
+                self._keyword_check()
+            elif choice == 4:
+                if self.it_panel.authenticate():
+                    self.it_panel.search_workflow()
+            elif choice == 5:
+                display_message("\n  Thank you for using PhishGuard! Stay safe.")
+                break
+            else:
+                display_message("  Invalid choice — enter 1–5.")
+
