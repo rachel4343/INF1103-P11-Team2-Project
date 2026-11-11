@@ -42,3 +42,18 @@ def threaded_analyze(report):
     with ThreadPoolExecutor() as ex:
         future = ex.submit(sys["analyzer"].analyze, report)
         return future.result(timeout=30)
+
+# ── Web UI — ONLY buttons & display ✅ ──
+st.set_page_config(page_title="PhishGuard", page_icon="🛡️")
+st.title("🛡️ PhishGuard — Web Interface")
+
+text = st.text_area("Paste text to scan")
+if st.button("Scan"):
+    report = {"body": text, "subject": "", "sender_name": "", "sender_email": "", "viewed": True}
+    with st.spinner("Analysing..."):
+        result, err = threaded_analyze(report)
+    if result:
+        st.write(f"**Threat:** {result['threat_level']}")
+        st.write(f"**Confidence:** {result['confidence']:.0%}")
+    else:
+        st.error(f"Error: {err}")
