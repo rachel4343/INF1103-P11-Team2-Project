@@ -1,0 +1,9 @@
+# Install with: py -m pip install -r requirements.txt
+streamlit>=1.66.0
+requests>=2.32.0
+Pillow>=11.0.0
+pytesseract>=0.3.13
+
+# OCR also requires the separate Tesseract application installed on Windows.
+# Streamlit is started from the project folder with:
+# py -m streamlit run .\website_app.py
