@@ -22,3 +22,17 @@ from phishing_guard_main import (
 # ── Initialise — same as CLI ──
 API_KEY = __import__('os').environ.get("GEMINI_API_KEY", "")
 
+@st.cache_resource
+def get_systems():
+    gemini = GeminiAPIClient(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+        API_KEY
+    )
+    ai_mgr = AIManager()
+    return {
+        "analyzer": AnalysisOrchestrator(gemini, ai_mgr),
+        "keyword_checker": KeywordChecker(),
+        "data_mgr": DataManager(JsonRecordStore(DATA_FILE)),
+    }
+
+sys = get_systems()
