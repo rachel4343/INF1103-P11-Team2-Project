@@ -1,0 +1,13 @@
+# ==============================================
+#  PHISHGUARD — GitHub Actions CI
+#  INF1103 Phase 2
+# ==============================================
+
+name: PhishGuard CI
+
+# Run automatically when you push to GitHub
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
