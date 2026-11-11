@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 from typing import Callable, Dict, Optional
 from .email_extractor import EmailExtractor
 from .extraction_error import ExtractionError
@@ -20,6 +21,17 @@ class TesseractExtractor(EmailExtractor):
         self._parser = parser or EmailTextParser()
         self._timeout = timeout
         self._ocr_fn = ocr_fn  # injected fake for deterministic tests
+        bundled_executable = (
+            Path(__file__).resolve().parent
+            / "vendor"
+            / "tesseract"
+            / "windows"
+            / "tesseract.exe"
+        )
+        self._tesseract_executable = (
+            str(bundled_executable) if bundled_executable.is_file()
+            else shutil.which("tesseract")
+        )
 
     def is_available(self) -> bool:
         if self._ocr_fn is not None:
@@ -29,7 +41,7 @@ class TesseractExtractor(EmailExtractor):
             from PIL import Image
         except ImportError:
             return False
-        return shutil.which("tesseract") is not None
+        return self._tesseract_executable is not None
 
     def extract(self, image_path: str) -> Dict:
         if not self.is_available():
@@ -49,6 +61,8 @@ class TesseractExtractor(EmailExtractor):
     def _run_ocr(self, path: str) -> str:
         import pytesseract
         from PIL import Image, ImageOps, ImageEnhance
+        if self._tesseract_executable:
+            pytesseract.pytesseract.tesseract_cmd = self._tesseract_executable
         with Image.open(path) as original:
             image = ImageOps.grayscale(original)
             if 0 < image.width < 1400:
@@ -56,4 +70,3 @@ class TesseractExtractor(EmailExtractor):
                 image = image.resize((int(image.width * factor), int(image.height * factor)))
             image = ImageEnhance.Contrast(image).enhance(1.8)
             return pytesseract.image_to_string(image, config="--psm 6", timeout=self._timeout)
-
