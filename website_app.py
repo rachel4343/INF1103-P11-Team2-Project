@@ -36,3 +36,9 @@ def get_systems():
     }
 
 sys = get_systems()
+
+# ── Threaded AI Call ──
+def threaded_analyze(report):
+    with ThreadPoolExecutor() as ex:
+        future = ex.submit(sys["analyzer"].analyze, report)
+        return future.result(timeout=30)
