@@ -18,3 +18,7 @@ from phishing_guard_main import (
     IT_PASSWORD,
     DATA_FILE,
 )
+
+# ── Initialise — same as CLI ──
+API_KEY = __import__('os').environ.get("GEMINI_API_KEY", "")
+
