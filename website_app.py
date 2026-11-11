@@ -3,11 +3,13 @@
 # ==============================================
 
 import os
+import tempfile
 
 import streamlit as st
 
 from ai_manager import AIManager
 from data_manager import DataManager, JsonRecordStore
+from io_manager import AttachmentReader, ExtractionError, TesseractExtractor
 from io_manager.keyword_checker import KeywordChecker
 from logic_manager import LogicManager
 from phishing_guard_main import API_URL, AnalysisOrchestrator, GeminiAPIClient
@@ -32,6 +34,8 @@ class PhishGuardWebApp:
         self.store = JsonRecordStore(self.DATA_FILE)
         self.data_manager = DataManager(self.store)
         self.logic_manager = LogicManager()
+        self.attachment_reader = AttachmentReader()
+        self.ocr_extractor = TesseractExtractor()
 
     def render(self):
         st.set_page_config(page_title="PhishGuard", page_icon="🛡️")
@@ -60,12 +64,75 @@ class PhishGuardWebApp:
 
     def _render_report_submission(self):
         st.header("Submit Email Report")
+        input_method = st.radio(
+            "How would you like to provide the email?",
+            ("Enter manually", "Upload an image for OCR"),
+            horizontal=True,
+            key="report_input_method",
+        )
+
+        extracted = {}
+        if input_method == "Upload an image for OCR":
+            st.caption(
+                "The image is processed locally with Tesseract and is not uploaded "
+                "to the AI service. Review the extracted text before analysis."
+            )
+            if not self.ocr_extractor.is_available():
+                st.error(
+                    "Local OCR is unavailable. Install Tesseract OCR and ensure "
+                    "its executable is on PATH, then restart Streamlit."
+                )
+                return
+
+            image = st.file_uploader(
+                "Email screenshot (PNG, JPEG, or WEBP; maximum 10 MB)",
+                type=("png", "jpg", "jpeg", "webp"),
+                key="email_screenshot",
+            )
+            if image is None:
+                st.info("Upload a screenshot to extract its email text.")
+                return
+
+            image_bytes = image.getvalue()
+            if not image_bytes or len(image_bytes) > 10 * 1024 * 1024:
+                st.error("The image must be between 1 byte and 10 MB.")
+                return
+
+            image_key = f"{image.name}:{len(image_bytes)}:{hash(image_bytes)}"
+            if st.session_state.get("ocr_image_key") != image_key:
+                st.session_state.pop("ocr_report_fields", None)
+                st.session_state["ocr_image_key"] = image_key
+
+            if "ocr_report_fields" not in st.session_state:
+                if st.button("Extract email text from image"):
+                    try:
+                        extracted = self._extract_uploaded_image(image.name, image_bytes)
+                        st.session_state["ocr_report_fields"] = extracted
+                        st.rerun()
+                    except (ValueError, ExtractionError) as error:
+                        st.error(f"Could not read the screenshot: {error}")
+                return
+
+            extracted = st.session_state["ocr_report_fields"]
+            st.success("Text extracted. Check and edit the fields below.")
+
         with st.form("report_submission"):
-            sender_email = st.text_input("Sender email")
-            sender_name = st.text_input("Sender display name")
-            subject = st.text_input("Email subject")
-            body = st.text_area("Email message", height=200)
-            urls = st.text_input("URLs found (comma-separated)")
+            sender_email = st.text_input(
+                "Sender email", value=extracted.get("sender_email", "")
+            )
+            sender_name = st.text_input(
+                "Sender display name", value=extracted.get("sender_name", "")
+            )
+            subject = st.text_input("Email subject", value=extracted.get("subject", ""))
+            body = st.text_area(
+                "Email message",
+                value=extracted.get("body", ""),
+                height=200,
+            )
+            urls = st.text_input(
+                "URLs found (comma-separated)",
+                value=", ".join(extracted.get("urls", [])),
+            )
             clicked_link = st.checkbox("I clicked a link")
             opened_attachment = st.checkbox("I opened an attachment")
             entered_information = st.checkbox("I entered personal or account information")
@@ -85,6 +152,7 @@ class PhishGuardWebApp:
             "body": body.strip(),
             "urls": [url.strip() for url in urls.split(",") if url.strip()],
             "attachments": [],
+            "input_method": "screenshot OCR" if input_method == "Upload an image for OCR" else "typed",
             "actions_taken": {
                 "clicked_link": clicked_link,
                 "opened_attachment": opened_attachment,
@@ -112,6 +180,22 @@ class PhishGuardWebApp:
 
         st.success(f"Report submitted. Your report ID is {report_id}.")
         self._show_record(record)
+        if input_method == "Upload an image for OCR":
+            st.session_state.pop("ocr_report_fields", None)
+            st.session_state.pop("ocr_image_key", None)
+
+    def _extract_uploaded_image(self, filename, image_bytes):
+        suffix = os.path.splitext(filename)[1].lower()
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as image_file:
+                image_file.write(image_bytes)
+                temp_path = image_file.name
+            image_info = self.attachment_reader.inspect(temp_path, image_only=True)
+            return self.ocr_extractor.extract(image_info["path"])
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
 
     def _render_keyword_checker(self):
         st.header("Keyword Checker")
