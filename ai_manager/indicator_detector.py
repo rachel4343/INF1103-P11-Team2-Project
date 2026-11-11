@@ -4,8 +4,8 @@
 import re
 from typing import Dict
 
-from config import Config
-from email_report import EmailReport
+from .config import Config
+from .email_report import EmailReport
 
 class IndicatorDetector:
     """Runs the detection rules and returns the phishing indicators."""

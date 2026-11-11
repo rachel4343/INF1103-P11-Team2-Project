@@ -1,11 +1,12 @@
-#validator.py under ai_manager.py
-#validate result follows the expected data structure, contains the required fields and uses the correct data types
+"""Validation for locally generated phishing analysis results."""
 
-from config import Config
+from .config import Config
+
 
 class AIValidator:
-    """Validates that an AI result dictionary has the expected keys and types."""
-def validate(self, data: dict) -> bool:
+    """Validates required analysis fields and their types."""
+
+    def validate(self, data: dict) -> bool:
         if not isinstance(data, dict):
             return False
 
@@ -16,13 +17,15 @@ def validate(self, data: dict) -> bool:
         if data.get("threat_level") not in Config.THREAT_LEVELS:
             return False
 
-        conf = data.get("confidence")
-        # bool is not a valid confidence
-        if isinstance(conf, bool) or not isinstance(conf, (int, float)) or not (0.0 <= conf <= 1.0):
+        confidence = data.get("confidence")
+        if (
+            isinstance(confidence, bool)
+            or not isinstance(confidence, (int, float))
+            or not 0.0 <= confidence <= 1.0
+        ):
             return False
 
-        for field in Config.BOOLEAN_FIELDS:
-            if not isinstance(data.get(field), bool):
-                return False
-
-        return True
+        return all(
+            isinstance(data.get(field), bool)
+            for field in Config.BOOLEAN_FIELDS
+        )

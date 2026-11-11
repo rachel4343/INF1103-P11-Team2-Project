@@ -3,7 +3,7 @@
 
 from typing import Dict, Tuple
 
-from config import Config
+from .config import Config
 
 class ThreatScorer:
     """Turns detected indicators into a weighted score, threat level and confidence."""
