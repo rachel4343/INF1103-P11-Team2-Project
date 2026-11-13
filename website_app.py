@@ -42,11 +42,27 @@ class PhishGuardWebApp:
         st.title("🛡️ PhishGuard")
         st.caption("AI-powered phishing detection and report management")
 
-        # Show which analysis path is active (Gemini API key found or not)
-        if self.analyzer.gemini.enabled:
-            st.sidebar.success("Online: Gemini AI (API key found)")
+        entered_api_key = st.sidebar.text_input(
+            "Gemini API key",
+            type="password",
+            key="gemini_api_key_input",
+            help=(
+                "Used for this Streamlit session only. Leave blank to use "
+                "the server's GEMINI_API_KEY setting."
+            ),
+        ).strip()
+        api_key = entered_api_key or os.environ.get("GEMINI_API_KEY", "")
+        gemini = GeminiAPIClient(API_URL, api_key)
+        self.analyzer = AnalysisOrchestrator(gemini, AIManager())
+
+        if gemini.enabled:
+            st.sidebar.success(
+                "Gemini is configured. If unavailable, analysis falls back offline."
+            )
         else:
-            st.sidebar.warning("Offline: built-in rules only (no GEMINI_API_KEY)")
+            st.sidebar.warning(
+                "Offline analysis. Enter a Gemini API key to enable online analysis."
+            )
 
         choice = st.radio(
             "Main menu — choose an option",

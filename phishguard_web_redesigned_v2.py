@@ -16,6 +16,8 @@ from logic_manager import LogicManager
 from phishing_guard_main import API_URL, AnalysisOrchestrator, GeminiAPIClient
 
 
+
+
 class PhishGuardWebApp:
     """Streamlit interface for the PhishGuard application workflows."""
 
@@ -50,6 +52,28 @@ class PhishGuardWebApp:
             layout="wide",
             initial_sidebar_state="expanded",
         )
+
+        entered_api_key = st.sidebar.text_input(
+            "Gemini API key",
+            type="password",
+            key="gemini_api_key_input",
+            help=(
+                "Used for this Streamlit session only. Leave blank to use "
+                "the server's GEMINI_API_KEY setting."
+            ),
+        ).strip()
+        api_key = entered_api_key or os.environ.get("GEMINI_API_KEY", "")
+        gemini = GeminiAPIClient(API_URL, api_key)
+        self.analyzer = AnalysisOrchestrator(gemini, AIManager())
+
+        if gemini.enabled:
+            st.sidebar.success(
+                "Gemini is configured. If unavailable, analysis falls back offline."
+            )
+        else:
+            st.sidebar.warning(
+                "Offline analysis. Enter a Gemini API key to enable online analysis."
+            )
 
         self._apply_custom_styles()
         choice = self._render_sidebar()
@@ -839,6 +863,7 @@ class PhishGuardWebApp:
         with confidence_column:
             st.metric("AI Confidence", f"{confidence:.0%}")
 
+        st.write(f"**Analysis mode:** {result.get('analysis_mode', 'unknown')}")
         st.write(f"**Attack Type:** {result.get('attack_type', 'Unknown')}")
         st.write(f"**Explanation:** {result.get('explanation', 'No explanation provided.')}")
         st.write(f"**Recommended Action:** {result.get('recommended_action', 'No recommendation provided.')}")
