@@ -42,6 +42,12 @@ class PhishGuardWebApp:
         st.title("🛡️ PhishGuard")
         st.caption("AI-powered phishing detection and report management")
 
+        # Show which analysis path is active (Gemini API key found or not)
+        if self.analyzer.gemini.enabled:
+            st.sidebar.success("Online: Gemini AI (API key found)")
+        else:
+            st.sidebar.warning("Offline: built-in rules only (no GEMINI_API_KEY)")
+
         choice = st.radio(
             "Main menu — choose an option",
             self.MENU_OPTIONS,
@@ -367,6 +373,7 @@ class PhishGuardWebApp:
     @staticmethod
     def _show_ai_result(result):
         st.subheader("AI assessment")
+        st.write(f"**Analysis mode:** {result.get('analysis_mode', 'unknown')}")
         st.write(f"**Threat:** {result.get('threat_level', 'unknown').title()}")
         st.write(f"**Confidence:** {result.get('confidence', 0):.0%}")
         st.write(f"**Attack type:** {result.get('attack_type', 'unknown')}")
