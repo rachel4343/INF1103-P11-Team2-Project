@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 from typing import Callable, Dict, Optional
 from .email_extractor import EmailExtractor
@@ -28,11 +29,11 @@ class TesseractExtractor(EmailExtractor):
             / "windows"
             / "tesseract.exe"
         )
+        use_bundled = sys.platform == "win32" and bundled_executable.is_file()
         self._tesseract_executable = (
-            str(bundled_executable) if bundled_executable.is_file()
+            str(bundled_executable) if use_bundled
             else shutil.which("tesseract")
         )
-
     def is_available(self) -> bool:
         if self._ocr_fn is not None:
             return True
