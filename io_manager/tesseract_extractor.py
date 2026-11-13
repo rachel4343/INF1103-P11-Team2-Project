@@ -49,7 +49,9 @@ class TesseractExtractor(EmailExtractor):
             raise ExtractionError("Tesseract OCR is not installed")
         try:
             text = (self._ocr_fn or self._run_ocr)(image_path)
-            return self._parser.parse(text)
+            fields = self._parser.parse(text)
+            self._parser.validate_email_screenshot(text, fields)
+            return fields
         except ExtractionError:
             raise
         except RuntimeError as exc:  # pytesseract raises RuntimeError on timeout
