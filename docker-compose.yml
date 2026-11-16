@@ -1,10 +1,9 @@
 services:
   phishguard-cli:
     build: .
-    image: phishguard-cli
+    image: phishguard
     stdin_open: true
     tty: true
-    working_dir: /app
     command: python phishing_guard_main.py
     environment:
       - GEMINI_API_KEY
@@ -14,11 +13,10 @@ services:
 
   phishguard-web:
     build: .
-    image: phishguard-web
+    image: phishguard
     ports:
       - "8501:8501"
-    working_dir: /app
-    command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    command: streamlit run phishguard_main_web_app.py --server.port=8501 --server.address=0.0.0.0
     environment:
       - GEMINI_API_KEY
       - PHISHGUARD_DATA_FILE=/app/data/phishguard_reports.json
