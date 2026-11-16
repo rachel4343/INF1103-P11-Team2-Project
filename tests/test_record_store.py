@@ -18,4 +18,13 @@ def test_json_store_save_and_load(temp_data_file):
     assert len(loaded) == 2
     assert loaded[0]["id"] == 1
     assert loaded[1]["data"] == "sample"
+
+def test_json_store_file_not_exists(temp_data_file):
+    """Loading from a non-existent file should return empty list."""
+    # Delete the temp file first
+    if temp_data_file.exists():
+        temp_data_file.unlink()
     
+    store = JsonRecordStore(temp_data_file)
+    records = store.load_all()
+    assert records == []    
