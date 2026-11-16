@@ -34,3 +34,18 @@ def test_invalid_response_missing_field(ai_mgr):
     
     is_valid = ai_mgr.ai_validator.validate(bad_response)
     assert is_valid is False
+
+def test_invalid_threat_level(ai_mgr):
+    """Unknown threat levels should be rejected."""
+    bad_response = {
+        "threat_level": "super_high",  # Invalid!
+        "confidence": 0.85,
+        "impersonation": False,
+        "urgency_manipulation": False,
+        "credential_request": False,
+        "suspicious_link": False,
+        "attachment_risk": False,
+    }
+    
+    is_valid = ai_mgr.ai_validator.validate(bad_response)
+    assert is_valid is False
