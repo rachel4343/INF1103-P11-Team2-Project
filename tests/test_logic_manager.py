@@ -43,3 +43,11 @@ def test_build_final_record(logic_mgr, sample_report):
         "recommended_action": "Report to Security",
         "explanation": "Found suspicious indicators"
     }
+
+    record = logic_mgr.build_final_record("PG-00001", sample_report, ai_result, None)
+    
+    assert record["report_id"] == "PG-00001"
+    assert record["threat_level"] == "high"
+    assert "priority" in record
+    assert "risk_score" in record
+    assert "review_stage" in record
