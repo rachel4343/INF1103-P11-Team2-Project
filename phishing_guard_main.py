@@ -134,11 +134,13 @@ class AnalysisOrchestrator:
         if result:
             return result, None
 
+        api_error = err
         if self.io is not None:
             self.io.display_message(f"    {err} — using offline analysis")
         result, err = self.ai_mgr.analyze_email(report)
         if result:
             result["analysis_mode"] = "offline rules"
+            result["api_error"] = api_error
         return result, err
 
 
