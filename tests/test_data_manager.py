@@ -19,3 +19,13 @@ def test_add_duplicate(data_mgr, sample_report):
     data_mgr.add_record(sample_report)
     outcome = data_mgr.add_record(sample_report)
     assert outcome.get("duplicate") is True
+
+def test_search_records(data_mgr, sample_report):
+    """Search should find matching records."""
+    data_mgr.add_record(sample_report)
+    
+    results = data_mgr.search_records([sample_report], "Support")
+    assert len(results) == 1
+    
+    results = data_mgr.search_records([sample_report], "nonexistent")
+    assert len(results) == 0
