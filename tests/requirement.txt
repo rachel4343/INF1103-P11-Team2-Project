@@ -1,0 +1,5 @@
+pytest>=7.0
+streamlit>=1.28
+requests>=2.31
+Pillow>=10.0
+pytesseract>=0.3
