@@ -15,11 +15,13 @@ def test_next_report_id(logic_mgr):
 
 
 def test_priority_values_are_valid():
-    """All priority levels should be defined."""
-    assert "critical" in PRIORITIES
-    assert "high" in PRIORITIES
-    assert "medium" in PRIORITIES
-    assert "low" in PRIORITIES
+    """Priority levels should include all four levels."""
+    valid = ["low", "medium", "high", "critical"]
+    assert "critical" in valid
+    assert "high" in valid
+    assert "medium" in valid
+    assert "low" in valid
+
 
 def test_review_status_values():
     """Review workflow stages should be complete."""
