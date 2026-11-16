@@ -24,3 +24,8 @@ def test_safe_text_returns_low_risk(checker):
     text = "Thank you for your email. We will reply shortly."
     result = checker.scan(text)
     assert result["level"] in ["low", "safe"]
+
+def test_empty_text(checker):
+    """Empty text should not crash."""
+    result = checker.scan("")
+    assert isinstance(result["score"], int)
