@@ -28,3 +28,18 @@ def test_review_status_values():
     assert "first" in REVIEW_STATUSES
     assert "awaiting_second_review" in REVIEW_STATUSES
     assert "closed" in REVIEW_STATUSES
+
+def test_build_final_record(logic_mgr, sample_report):
+    """Building a final record should include all required fields."""
+    ai_result = {
+        "threat_level": "high",
+        "confidence": 0.85,
+        "impersonation": True,
+        "urgency_manipulation": False,
+        "credential_request": True,
+        "suspicious_link": False,
+        "attachment_risk": False,
+        "attack_type": "phishing",
+        "recommended_action": "Report to Security",
+        "explanation": "Found suspicious indicators"
+    }
