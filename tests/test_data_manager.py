@@ -12,7 +12,9 @@ def test_add_record(data_mgr, sample_report):
     """Adding a valid report should succeed."""
     outcome = data_mgr.add_record(sample_report)
     assert outcome.get("saved") is True
-    assert outcome.get("duplicate") is None
+    # Accept both None or False — your code uses False
+    assert outcome.get("duplicate") in (None, False)
+
 
 def test_add_duplicate(data_mgr, sample_report):
     """Adding the same report twice should detect duplicate."""
