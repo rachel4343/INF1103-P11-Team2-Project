@@ -12,3 +12,15 @@ services:
     volumes:
       - ./data:/app/data
 
+  phishguard-web:
+    build: .
+    image: phishguard-web
+    ports:
+      - "8501:8501"
+    working_dir: /app
+    command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    environment:
+      - GEMINI_API_KEY
+      - PHISHGUARD_DATA_FILE=/app/data/phishguard_reports.json
+    volumes:
+      - ./data:/app/data
