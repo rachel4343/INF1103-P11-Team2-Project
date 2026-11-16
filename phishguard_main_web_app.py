@@ -1617,6 +1617,25 @@ class PhishGuardWebApp:
         with st.expander("View technical report data"):
             st.json(record)
 
+    @staticmethod
+    def _test_gemini_connection(gemini):
+        """Send one tiny request so the user can see whether the API really works."""
+        with st.sidebar:
+            with st.spinner("Testing Gemini..."):
+                result, error = gemini.analyze(
+                    {
+                        "viewed": True,
+                        "subject": "test",
+                        "body": "hello",
+                        "sender_name": "",
+                        "sender_email": "",
+                    }
+                )
+            if result:
+                st.success("API test passed: Gemini is working.")
+            else:
+                st.error(f"API test failed: {error}. Offline rules will be used.")    
+
     def _show_store_warnings(self):
         for warning in self.data_manager.take_warnings():
             st.warning(warning)
