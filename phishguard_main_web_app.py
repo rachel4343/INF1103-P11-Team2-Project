@@ -1552,6 +1552,16 @@ class PhishGuardWebApp:
         with confidence_column:
             st.metric("AI Confidence", f"{confidence:.0%}")
 
+        mode = result.get("analysis_mode", "unknown")
+        api_error = result.get("api_error")
+        if mode == "Gemini AI":
+            st.success("API status: working. Analysed by Gemini AI.")
+        elif api_error and api_error != "API key not set":
+            st.warning(f"API status: not working ({api_error}). Offline rules were used.")
+        else:
+            st.info("API status: not used (no API key). Offline rules were used.")
+        st.write(f"**Analysis mode:** {mode}")
+
         st.write(f"**Analysis mode:** {result.get('analysis_mode', 'unknown')}")
         st.write(f"**Attack Type:** {result.get('attack_type', 'Unknown')}")
         st.write(f"**Explanation:** {result.get('explanation', 'No explanation provided.')}")
