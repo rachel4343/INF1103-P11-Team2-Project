@@ -7,3 +7,15 @@ def test_record_store_is_abstract():
     """RecordStore should be an abstract base class."""
     assert hasattr(RecordStore, '__abstractmethods__')
 
+def test_json_store_save_and_load(temp_data_file):
+    """Saving records then loading them should return the same data."""
+    store = JsonRecordStore(temp_data_file)
+    records = [{"id": 1, "data": "test"}, {"id": 2, "data": "sample"}]
+    
+    assert store.save_all(records) is True
+    loaded = store.load_all()
+    
+    assert len(loaded) == 2
+    assert loaded[0]["id"] == 1
+    assert loaded[1]["data"] == "sample"
+    
