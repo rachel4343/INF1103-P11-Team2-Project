@@ -69,12 +69,16 @@ class PhishGuardWebApp:
 
         if gemini.enabled:
             st.sidebar.success(
-                "Gemini is configured. If unavailable, analysis falls back offline."
+                "Gemini key entered. Click 'Test API connection' to check it works. "
+                "If unavailable, analysis falls back offline."
             )
         else:
             st.sidebar.warning(
                 "Offline analysis. Enter a Gemini API key to enable online analysis."
             )
+
+        if st.sidebar.button("Test API connection", use_container_width=True):
+            self._test_gemini_connection(gemini)
 
         self._apply_custom_styles()
         choice = self._render_sidebar()
