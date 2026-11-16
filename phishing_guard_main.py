@@ -1,47 +1,29 @@
 # ==============================================
-#  PHISHGUARD — Main Program (OOP Refactored)
+#  PHISHGUARD — Main Program (Fully OOP)
 #  INF1103 Phase 2
 # ==============================================
 
-import getpass
 import json
 import os
 import requests
 from typing import Dict, Optional, Tuple
 
-# ── Import All Managers ───────────────────────
+# ── Import All Managers (classes only) ────────
 from ai_manager import AIManager
 from data_manager import DataManager, JsonRecordStore
-from io_manager import (
-    display_header,
-    display_message,
-    display_error,
-    display_assessment,
-    display_record_list,
-    display_record_detail,
-    display_keyword_results,
-    display_ai_keyword_results,
-    prompt_menu_number,
-    prompt_choice,
-    prompt_text,
-    collect_report_input,
-    collect_review_update,
-    collect_record_id,
-    collect_keyword_text,
-    prompt_it_password,
-)
-from io_manager.keyword_checker import KeywordChecker
+from io_manager import IOManager, KeywordChecker
 from logic_manager import (
     LogicManager,
     REVIEW_STATUSES,
     PRIORITIES,
     THREAT_LEVELS,
 )
+
 # ── Configuration ─────────────────────────────
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent"
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
-IT_PASSWORD = "PhishGuard#2026"
 DATA_FILE = "phishguard_reports.json"
+
 
 class GeminiAPIClient:
     """Handles communication with Google Gemini API — isolated component."""
@@ -132,12 +114,19 @@ Respond with:
         except Exception as e:
             return None, f"API error: {str(e)}"
 
-class AnalysisOrchestrator:
-    """Orchestrates AI analysis — tries Gemini first, falls back to offline rules."""
 
-    def __init__(self, gemini_client: GeminiAPIClient, ai_manager: AIManager):
+class AnalysisOrchestrator:
+    """Orchestrates AI analysis — tries Gemini first, falls back to offline rules.
+
+    The IOManager is optional so the web interface can use this class
+    without printing to the console.
+    """
+
+    def __init__(self, gemini_client: GeminiAPIClient, ai_manager: AIManager,
+                 io: Optional[IOManager] = None):
         self.gemini = gemini_client
         self.ai_mgr = ai_manager
+        self.io = io
 
     def analyze(self, report: Dict) -> Tuple[Optional[Dict], Optional[str]]:
         """Dual-path analysis: cloud → local fallback."""
@@ -145,92 +134,90 @@ class AnalysisOrchestrator:
         if result:
             return result, None
 
-        display_message(f"    {err} — using offline analysis")
+        if self.io is not None:
+            self.io.display_message(f"    {err} — using offline analysis")
         result, err = self.ai_mgr.analyze_email(report)
         if result:
             result["analysis_mode"] = "offline rules"
         return result, err
 
+
 class ITSecurityPanel:
     """Handles IT login, review workflow and report management."""
 
-    def __init__(self, data_mgr: DataManager, logic_mgr: LogicManager):
+    def __init__(self, data_mgr: DataManager, logic_mgr: LogicManager, io: IOManager):
         self.data_mgr = data_mgr
         self.logic_mgr = logic_mgr
-        self._password = IT_PASSWORD
+        self.io = io
 
     def authenticate(self) -> bool:
-        """Verify IT personnel credentials."""
-        display_message("\n  IT Security Login")
-        entered = getpass.getpass("  Enter password: ").strip()
-        if entered == self._password:
-            display_message("  Login successful!\n")
+        """Verify IT personnel credentials (hashed password, 3 attempts)."""
+        if self.io.prompt_it_password(self.logic_mgr.verify_it_password):
+            self.io.display_message("  Login successful!\n")
             return True
-        display_message("  Incorrect password.\n")
         return False
 
     def _review_single_report(self, records: list, idx: int) -> bool:
         """Process one report review — returns True if saved."""
-        display_record_detail(records[idx])
+        self.io.display_record_detail(records[idx])
 
         if records[idx].get("review_stage") == "closed":
-            display_message("  This report is finalised — no changes allowed.")
+            self.io.display_message("  This report is finalised — no changes allowed.")
             return False
 
-        updates = collect_review_update(records[idx])
+        updates = self.io.collect_review_update(records[idx])
         updated, errors = self.logic_mgr.apply_review_update(records[idx], updates)
 
         if errors:
             for err in errors:
-                display_error(err)
+                self.io.display_error(err)
             return False
 
         records[idx] = updated
         if not self.data_mgr.save_records(records):
             for warning in self.data_mgr.take_warnings():
-                display_error(warning)
-            display_error("Review could not be saved.")
+                self.io.display_error(warning)
+            self.io.display_error("Review could not be saved.")
             return False
 
         # Status feedback
         stage = updated.get("review_stage")
         if stage == "awaiting_second_review":
-            display_message(f" First review saved — waiting for {updated.get('assigned_reviewer')}")
+            self.io.display_message(f" First review saved — waiting for {updated.get('assigned_reviewer')}")
         elif stage == "closed":
-            display_message("  Finalised & Locked — no further changes.")
+            self.io.display_message("  Finalised & Locked — no further changes.")
         else:
-            display_message("  Sent back for reassessment.")
+            self.io.display_message("  Sent back for reassessment.")
         return True
 
     def _open_results(self, records: list, found: list):
         """Handle search results — single or multiple matches."""
         if not found:
-            display_error("No reports match that.")
+            self.io.display_error("No reports match that.")
             return
         if len(found) == 1:
             report_id = found[0].get("report_id", "")
         else:
-            display_record_list(found)
-            report_id = collect_record_id(found)
+            self.io.display_record_list(found)
+            report_id = self.io.collect_record_id(found)
             if report_id is None:
                 return
 
         idx = self.logic_mgr.find_record_index(records, report_id)
         if idx < 0:
-            display_error("Report no longer available.")
+            self.io.display_error("Report no longer available.")
             return
         self._review_single_report(records, idx)
-
 
     def search_workflow(self):
         """Search & filter reports then review."""
         records = self.data_mgr.load_records()
         if not records:
-            display_message("  No reports submitted yet.")
-            input("  Press Enter to return...")
+            self.io.display_message("  No reports submitted yet.")
+            self.io.pause("  Press Enter to return...")
             return
 
-        choice = prompt_choice(
+        choice = self.io.prompt_choice(
             "\nFind a report:",
             [
                 "Find by ID or keywords",
@@ -245,21 +232,23 @@ class ITSecurityPanel:
         if choice == "Back":
             return
         elif choice == "Find by ID or keywords":
-            text = prompt_text("Report ID, sender, subject or words")
+            text = self.io.prompt_text("Report ID, sender, subject or words")
             exact = self.data_mgr.find_record(records, text)
             found = [exact] if exact else self.data_mgr.search_records(records, text)
         elif choice == "Filter by priority":
-            val = prompt_choice("Priority:", list(PRIORITIES))
+            val = self.io.prompt_choice("Priority:", list(PRIORITIES))
             found = self.data_mgr.filter_records(records, priority=val)
         elif choice == "Filter by threat level":
-            val = prompt_choice("Threat level:", list(THREAT_LEVELS) + ["unknown"])
+            val = self.io.prompt_choice("Threat level:", list(THREAT_LEVELS) + ["unknown"])
             found = self.data_mgr.filter_records(records, threat_level=val)
         elif choice == "Filter by review status":
-            val = prompt_choice("Review status:", list(REVIEW_STATUSES))
+            val = self.io.prompt_choice("Review status:", list(REVIEW_STATUSES))
             found = self.data_mgr.filter_records(records, review_status=val)
         else:
-            low = prompt_text("Lowest risk (Enter = 0)", required=False, validator=str.isdigit) or "0"
-            high = prompt_text("Highest risk (Enter = 100)", required=False, validator=str.isdigit) or "100"
+            low = self.io.prompt_text("Lowest risk (Enter = 0)", required=False,
+                                      validator=str.isdigit) or "0"
+            high = self.io.prompt_text("Highest risk (Enter = 100)", required=False,
+                                       validator=str.isdigit) or "100"
             found = self.data_mgr.filter_records(
                 records, min_risk=int(low), max_risk=int(high)
             )
@@ -270,60 +259,115 @@ class ITSecurityPanel:
         """IT panel loop — shown after login."""
         while True:
             records = self.data_mgr.load_records()
-            display_record_list(self.logic_mgr.sort_records_by_priority(records))
+            self.io.display_record_list(self.logic_mgr.sort_records_by_priority(records))
 
             if not records:
-                display_message("  No reports submitted yet.\n")
-                input("  Press Enter to return...")
+                self.io.display_message("  No reports submitted yet.\n")
+                self.io.pause("  Press Enter to return...")
                 return
 
-            report_id = collect_record_id(records)
+            report_id = self.io.collect_record_id(records)
             if report_id is None:
                 return
 
             idx = self.logic_mgr.find_record_index(records, report_id)
             if idx < 0:
-                display_error("Report not found.")
+                self.io.display_error("Report not found.")
                 continue
 
             self._review_single_report(records, idx)
+
+
+class KeywordCheckerPanel:
+    """Keyword checker tool: offline quick scan or AI deep scan."""
+
+    def __init__(self, io: IOManager, checker: KeywordChecker,
+                 analyzer: AnalysisOrchestrator):
+        self.io = io
+        self.checker = checker
+        self.analyzer = analyzer
+
+    def quick_scan(self):
+        """Offline keyword scan — instant, no internet needed."""
+        self.io.display_header("Keyword Checker — Quick Scan")
+        text = self.io.collect_keyword_text()
+        sender = self.io.prompt_text("Sender name (optional)", required=False)
+        self.io.display_keyword_results(self.checker.scan(text, sender))
+
+    def deep_scan(self):
+        """AI deep scan — uses Gemini, falls back to offline rules."""
+        self.io.display_header("Keyword Checker — Deep Scan")
+        text = self.io.collect_keyword_text()
+        sender = self.io.prompt_text("Sender name (optional)", required=False)
+        report = {
+            "subject": "",
+            "body": text,
+            "sender_name": sender,
+            "sender_email": "",
+            "viewed": True,
+        }
+        self.io.display_message("\n  Analysing...")
+        result, err = self.analyzer.analyze(report)
+        if result:
+            self.io.display_ai_keyword_results(result)
+        else:
+            self.io.display_error(f"Deep scan failed: {err}")
+
+    def menu(self):
+        """Sub-menu loop."""
+        while True:
+            self.io.display_header("KEYWORD CHECKER — Select Scan Type")
+            self.io.display_message("  1. Quick Scan — Offline, instant, no internet needed")
+            self.io.display_message("  2. Deep Scan  — AI-powered, understands context & meaning")
+            self.io.display_message("  3. Back to Main Menu")
+
+            choice = self.io.prompt_menu_number(3)
+            if choice == 1:
+                self.quick_scan()
+            elif choice == 2:
+                self.deep_scan()
+            else:
+                self.io.display_message("  Returning to Main Menu...")
+                break
+
 
 class PhishGuardApp:
     """Main Application — coordinates all subsystems."""
 
     def __init__(self):
-        # Initialise all subsystems
+        # One IOManager object is shared by every class that talks to the user
+        self.io = IOManager()
         self.store = JsonRecordStore(DATA_FILE)
         self.data_mgr = DataManager(self.store)
         self.logic_mgr = LogicManager()
         self.ai_mgr = AIManager()
         self.gemini = GeminiAPIClient(API_URL, API_KEY)
-        self.analyzer = AnalysisOrchestrator(self.gemini, self.ai_mgr)
-        self.it_panel = ITSecurityPanel(self.data_mgr, self.logic_mgr)
+        self.analyzer = AnalysisOrchestrator(self.gemini, self.ai_mgr, self.io)
+        self.it_panel = ITSecurityPanel(self.data_mgr, self.logic_mgr, self.io)
+        self.keyword_panel = KeywordCheckerPanel(self.io, KeywordChecker(), self.analyzer)
 
     def show_startup_message(self):
         """Display API status at launch."""
         if self.gemini.enabled:
-            display_message("  Gemini API analysis — ON")
+            self.io.display_message("  Gemini API analysis — ON")
         else:
-            display_message("   No API key — using offline analysis only")
-            display_message("   Set: $env:GEMINI_API_KEY='your-key'")
+            self.io.display_message("   No API key — using offline analysis only")
+            self.io.display_message("   Set: $env:GEMINI_API_KEY='your-key'")
 
-    @staticmethod
-    def _show_main_menu() -> int:
+    def _show_main_menu(self) -> int:
         """Display main menu & get selection."""
-        display_header("PHISHGUARD — Main Menu")
-        display_message("  1. Submit Email Report (Employee / User)")
-        display_message("  2. IT Security Personnel (Review & Manage)")
-        display_message("  3. Keyword Checker Tool")
-        display_message("  4. Find a Report (Search & Filter)")
-        display_message("  5. Exit")
-        return prompt_menu_number(5)
+        self.io.display_header("PHISHGUARD — Main Menu")
+        self.io.display_message("  1. Submit Email Report (Employee / User)")
+        self.io.display_message("  2. IT Security Personnel (Review & Manage)")
+        self.io.display_message("  3. Keyword Checker Tool")
+        self.io.display_message("  4. Find a Report (Search & Filter)")
+        self.io.display_message("  5. Exit")
+        return self.io.prompt_menu_number(5)
 
     def _submit_report(self):
         """Handle new report submission flow."""
-        report = collect_report_input()
-        display_message("\n  Analysing report...")
+        report = self.io.collect_report()
+        self.io.display_message("\n  Analysing report...")
 
         ai_result, ai_error = self.analyzer.analyze(report)
         records = self.data_mgr.load_records()
@@ -332,52 +376,29 @@ class PhishGuardApp:
 
         outcome = self.data_mgr.add_record(record)
 
-        for warning in self.store.take_warnings():
-            display_message(f"   {warning}")
+        for warning in self.data_mgr.take_warnings():
+            self.io.display_message(f"   {warning}")
 
         if outcome.get("duplicate"):
-            display_message("   Duplicate — already saved.")
+            self.io.display_message("   Duplicate — already saved.")
             return
         if not outcome.get("saved"):
-            display_error("  Failed to save report.")
+            self.io.display_error("  Failed to save report.")
             return
 
         if outcome.get("same_scam_before", 0) > 0:
-            display_message(f"   Similar scam reported {outcome['same_scam_before']} time(s) before.")
+            self.io.display_message(
+                f"   Similar scam reported {outcome['same_scam_before']} time(s) before.")
 
-        display_assessment(record)
-        display_message(f"\n  Saved! Report ID: {report_id}")
-
-def _keyword_checker_menu(self):
-    """Sub-menu: choose offline quick scan or AI deep scan."""
-    while True:
-        print("\n" + "─" * 50)
-        print("  KEYWORD CHECKER — Select Scan Type")
-        print("─" * 50)
-        print("  1.  Quick Scan  — Offline, instant, no internet needed")
-        print("  2.  Deep Scan   — AI-powered, understands context & meaning")
-        print("  3.  Back to Main Menu")
-        print("─" * 50)
-        
-        choice = input("\n  Enter your choice: ").strip()
-        
-        if choice == "1":
-            self._quick_keyword_scan()
-        elif choice == "2":
-            self._ai_keyword_scan()
-        elif choice == "3":
-            display_message("  Returning to Main Menu...")
-            break
-        else:
-            display_message("  Invalid choice — enter 1–3.")
-
+        self.io.display_assessment(record)
+        self.io.display_message(f"\n  Saved! Report ID: {report_id}")
 
     def run(self):
         """Application main loop."""
-        print("=" * 55)
-        print("  PHISHGUARD — AI-Powered Phishing Detector")
-        print("         INF1103 Phase 2 — OOP Refactored")
-        print("=" * 55)
+        self.io.display_message("=" * 55)
+        self.io.display_message("  PHISHGUARD — AI-Powered Phishing Detector")
+        self.io.display_message("         INF1103 Phase 2 — OOP Refactored")
+        self.io.display_message("=" * 55)
 
         self.show_startup_message()
 
@@ -390,20 +411,18 @@ def _keyword_checker_menu(self):
                 if self.it_panel.authenticate():
                     self.it_panel.main_menu()
             elif choice == 3:
-                self._keyword_checker_menu()
+                self.keyword_panel.menu()
             elif choice == 4:
                 if self.it_panel.authenticate():
                     self.it_panel.search_workflow()
             elif choice == 5:
-                display_message("\n  Thank you for using PhishGuard! Stay safe.")
+                self.io.display_message("\n  Thank you for using PhishGuard! Stay safe.")
                 break
-            else:
-                display_message("  Invalid choice — enter 1–5.")
+
 
 # ── ENTRY POINT ───────────────────────────────
 if __name__ == "__main__":
     try:
-        app = PhishGuardApp()
-        app.run()
+        PhishGuardApp().run()
     except (EOFError, KeyboardInterrupt):
-        display_message("\n\n  Exiting PhishGuard. Goodbye!")
+        print("\n\n  Exiting PhishGuard. Goodbye!")
