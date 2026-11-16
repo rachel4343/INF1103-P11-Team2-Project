@@ -29,3 +29,8 @@ def test_search_records(data_mgr, sample_report):
     
     results = data_mgr.search_records([sample_report], "nonexistent")
     assert len(results) == 0
+
+def test_load_records_returns_list(data_mgr):
+    """Loading records should always return a list."""
+    records = data_mgr.load_records()
+    assert isinstance(records, list)
