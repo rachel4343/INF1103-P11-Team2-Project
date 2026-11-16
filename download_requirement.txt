@@ -1,0 +1,77 @@
+====================================================================
+                PHISHGUARD — BEFORE YOU START
+           PLEASE READ & INSTALL EVERYTHING BELOW
+====================================================================
+
+ IF YOU SKIP ANYTHING, PART OF THE APP WILL NOT WORK ❌
+
+--------------------------------------------------------------------
+1.  INSTALL PYTHON 3.11 OR NEWER
+--------------------------------------------------------------------
+Download:  https://www.python.org/downloads/
+ IMPORTANT: Tick "Add Python.exe to PATH" during installation!
+Verify: Open terminal and type:  py --version
+
+--------------------------------------------------------------------
+2.  INSTALL PYTHON LIBRARIES
+--------------------------------------------------------------------
+Open terminal in this project folder and RUN:
+
+    pip install -r requirements.txt
+
+Or install them individually:
+    pip install streamlit
+    pip install requests
+    pip install Pillow
+    pip install pytesseract
+    pip install pytest
+
+What each library does:
+  - streamlit ........ = Runs the web interface
+  - requests ......... = Connects to Google Gemini AI API
+  - Pillow ........... = Reads and validates image files
+  - pytesseract ...... = Extracts text from screenshots (OCR)
+  - pytest ........... = Runs automated tests
+
+--------------------------------------------------------------------
+3.  INSTALL TESSERACT OCR  (for screenshot upload feature)
+--------------------------------------------------------------------
+Download:  https://github.com/UB-Mannheim/tesseract/wiki
+→ Get the Windows installer: tesseract-ocr-w64-setup-5.x.x.exe
+→ Install with default settings
+→ RESTART YOUR COMPUTER after installing!
+Verify: Open terminal and type:  tesseract --version
+
+ Without this: Screenshot upload will NOT work
+
+--------------------------------------------------------------------
+4.  SET YOUR GEMINI API KEY
+--------------------------------------------------------------------
+Get a free key: https://aistudio.google.com/apikey
+
+Option A — Set in terminal (temporary):
+  Windows:  $env:GEMINI_API_KEY="your-api-key-here"
+  Mac/Linux:  export GEMINI_API_KEY="your-api-key-here"
+
+Option B — Save to .env file (recommended):
+  Create a file named .env in this folder with:
+  GEMINI_API_KEY=your-api-key-here
+
+ Without this: AI analysis will NOT work
+   (Offline keyword scan still works though)
+
+====================================================================
+ ALL DONE? Verify everything:
+====================================================================
+  py --version          → Should show Python version ✅
+  streamlit --version   → Should show version number ✅
+  tesseract --version   → Should show version number ✅
+
+Then run the app:
+  CLI:      py phishguard_main.py
+  Web:      streamlit run streamlit_app.py
+
+====================================================================
+  If anything doesn't work → check above steps again!
+  All installed = Full app works perfectly ✅
+====================================================================
