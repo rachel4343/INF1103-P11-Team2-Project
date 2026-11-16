@@ -23,3 +23,14 @@ def test_valid_response_schema(ai_mgr):
 
     is_valid = ai_mgr.ai_validator.validate(mock_response)
     assert is_valid is True
+
+def test_invalid_response_missing_field(ai_mgr):
+    """Response missing required fields should fail validation."""
+    bad_response = {
+        "threat_level": "high",
+        "confidence": 0.85
+        # Missing all boolean fields!
+    }
+    
+    is_valid = ai_mgr.ai_validator.validate(bad_response)
+    assert is_valid is False
