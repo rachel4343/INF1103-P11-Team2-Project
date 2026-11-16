@@ -13,3 +13,9 @@ def test_add_record(data_mgr, sample_report):
     outcome = data_mgr.add_record(sample_report)
     assert outcome.get("saved") is True
     assert outcome.get("duplicate") is None
+
+def test_add_duplicate(data_mgr, sample_report):
+    """Adding the same report twice should detect duplicate."""
+    data_mgr.add_record(sample_report)
+    outcome = data_mgr.add_record(sample_report)
+    assert outcome.get("duplicate") is True
