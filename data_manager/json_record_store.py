@@ -38,7 +38,7 @@ class JsonRecordStore(RecordStore):
         return []
 
     def save_all(self, records: List[Dict]) -> bool:
-        temp_path = self.__path + ".tmp"
+        temp_path = self.__path.with_suffix('.json.tmp')
         try:
             with open(temp_path, "w", encoding="utf-8") as file:
                 json.dump(records, file, indent=2)
