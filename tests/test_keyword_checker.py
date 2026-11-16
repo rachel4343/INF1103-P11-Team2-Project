@@ -12,3 +12,9 @@ def test_detects_urgency(checker):
     result = checker.scan(text)
     assert result["level"] in ["medium", "high", "critical"]
     assert len(result["found"]["urgency"]) > 0
+
+def test_detects_credential_request(checker):
+    """Password/login keywords should be detected."""
+    text = "Please enter your password and login to verify your account."
+    result = checker.scan(text)
+    assert len(result["found"]["credential"]) > 0
